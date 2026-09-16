@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // TMDB requests and images are fetched directly by the user's browser.
+  // API credentials stay on the server; poster images load from TMDB's CDN.
   poweredByHeader: false,
   devIndicators: false,
 };

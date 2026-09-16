@@ -1,75 +1,97 @@
-# Movie Night
+# Movie Night — server-side prototype
 
-A responsive Next.js prototype for choosing a movie together. Browse by genre, original language, runtime, release decade, minimum rating, and US streaming service. Save a shortlist on the current device and open movie details before making a decision.
+A responsive Next.js movie discovery app for choosing a movie together. Filter by genre, original language, runtime, decade, rating, and US streaming service; save a shortlist on the current device.
+
+This version lives on the `server-side` branch in the `cs422-project-server` worktree. The original `cs422-project` checkout retains the browser-only version on `main`.
 
 ## Run locally
 
-With Nix and flakes enabled:
-
 ```sh
-cd ~/repos/cs422-project/prototype
+cd ~/repos/cs422-project-server/prototype
 nix develop
 pnpm install --frozen-lockfile
-pnpm dev
+cp .env.example .env.local
+# Set TMDB_API_TOKEN in .env.local with your TMDB application read access token.
+pnpm dev --port 3001
 ```
 
-Or use Node.js 24 and pnpm 11.19 directly:
+Node.js 24 and pnpm 11.19 can also be used without Nix. Open <http://localhost:3001>. The server binds to `0.0.0.0`, so another device on your network can use the computer's LAN address if the firewall permits it.
+
+Stop the development server before running `pnpm build`, then use `pnpm start --port 3001` for a production preview.
+
+## Credentials and request flow
+
+Set `TMDB_API_TOKEN` to your [TMDB application API Read Access Token](https://www.themoviedb.org/settings/api). A v3 API key is also accepted. The variable is server-only: never prefix it with `NEXT_PUBLIC_`. `.env.local` and Vercel project metadata are ignored by Git; environment files are also excluded from deployment uploads.
+
+The browser calls only these same-origin JSON endpoints:
+
+- `GET /api/catalog` — genres, languages, US providers, and `live` or `demo` status.
+- `GET /api/movies` — a page of discovered movies using validated filter parameters.
+- `GET /api/movies/[id]` — details for one movie.
+
+The Next.js server authenticates with TMDB. No credential is included in browser JavaScript, browser storage, API responses, or client request headers. Posters still load directly from TMDB's image CDN. There is no credential form.
+
+An absent token activates the explicitly labeled sample catalog. Sample provider assignments are illustrative, not current availability. An invalid configured token produces a recoverable error rather than silently returning sample results.
+
+## Shared caching
+
+| Request | Cache lifetime |
+| --- | --- |
+| Default landing movie list | 15 minutes |
+| Filtered lists and subsequent pages | 5 minutes |
+| Genres, languages, provider directory | 24 hours |
+| Movie details | 6 hours |
+
+TMDB fetches use Next.js's persistent data cache. Successful public catalog responses also carry CDN cache headers, with a 60-second stale-while-revalidate window. CDN hits can bypass the function; data-cache hits avoid another TMDB call. Cached content can be older than the freshness interval while a background refresh completes. These are request-driven refreshes, not scheduled jobs.
+
+Filter IDs are sorted and deduplicated to share cache entries across equivalent requests. Browser URLs omit default values. USA is fixed; language, filters, sort order, page, and release-date bounds determine each movie query. Failed responses are not CDN-cached. Network requests have a 10-second timeout.
+
+Only shared catalog data is cached. Each visitor's shortlist stays in localStorage and is never part of a shared server response.
+
+## Deployment on Vercel
+
+Deploy the `prototype` directory with the Next.js framework and Node.js 24. Set these variables in the desired deployment environments:
+
+- `TMDB_API_TOKEN` — a **Secret**, with your application credential.
+- `ENABLE_EXPERIMENTAL_COREPACK=1` — uses the pinned pnpm version.
+
+With the CLI signed in:
 
 ```sh
-pnpm install --frozen-lockfile
-pnpm dev
+pnpm dlx vercel@59.18.0 link --project cs422-movie-night
+pnpm dlx vercel@59.18.0 deploy --prod
 ```
 
-Open <http://localhost:3000>. The server binds to `0.0.0.0`, so a phone on the same network can open `http://YOUR_COMPUTER_LAN_IP:3000` if the firewall permits access. Production: `pnpm build && pnpm start`.
-
-## Connect live TMDB data
-
-1. Obtain an **API Read Access Token** from [your TMDB API settings](https://www.themoviedb.org/settings/api).
-2. Click **Connect TMDB** in the app, paste it, and click **Connect**. A v3 API key is also accepted.
-3. The app validates the credential, loads TMDB genres, languages, and US streaming providers, and queries the Discover API as filters change.
-
-All TMDB API requests execute in the user's browser using `fetch`, including metadata, discovery, and movie details. Posters also load directly from TMDB's image CDN. There are no Next.js API routes, server actions, or server-side TMDB proxies. Credentials are stored in `sessionStorage` for the current tab session, visible to browser code, and sent only to TMDB. No credential is bundled in the app. Disconnect removes the saved credential and returns to demo mode.
-
-Without a credential, the app uses an explicitly labeled local sample collection. Sample streaming assignments are illustrative, not current availability. Live integration requires your TMDB credential; automated tests intercept TMDB requests and do not claim to verify a real account or current catalog.
+The Vercel project is configured for the free Hobby plan and all-deployment Vercel Authentication for private testing. Share a deployment's Vercel Shareable Link with trusted testers if they do not have project access. This protection applies before the cached page/API is served. The app itself does not implement accounts or a distributed rate limiter; disabling deployment protection makes its read-only endpoints public. Cache, bounded parameters, and timeouts limit routine work, but do not provide an abuse quota.
 
 ## Filter behavior
 
-- **Genres:** matches any selected genre by default; “Must include every selected genre” switches to AND matching.
-- **Language:** filters original movie language, while result descriptions use English.
-- **Length:** 1–90, 91–120, 121–180, or 181+ minutes. Runtime is fetched from movie details in live mode because discovery responses do not contain it.
-- **Decade/rating:** combines with the other filters. Live discovery excludes future releases, adult/video entries, and movies with fewer than 100 votes.
-- **Streaming:** fixed to **USA**. Matches any selected service, including subscription, free, and ad-supported availability; excludes rental/purchase-only offers. No service selected means no availability restriction. Provider filtering uses `watch_region=US`, `with_watch_providers`, and `with_watch_monetization_types=flatrate|free|ads`.
-- **Shortlist:** stored in `localStorage` on the current browser, independent of discovery filters. It is a shared-screen planning tool for now; multi-device rooms and group voting are future work.
+Genres match **any** selection by default; the checkbox enables **all** matching. Original language filters the movie's original language, while descriptions use English. Runtime ranges are 1–90, 91–120, 121–180, or 181+ minutes. Live discovery excludes future releases, adult/video entries, and movies with fewer than 100 votes.
 
-Requests are debounced and canceled when filters change. The interface handles missing posters, loading, no matches, authentication failures, rate limiting, and network failures. Native dialogs provide focus containment and Escape dismissal, and the mobile filter sheet uses the same filtering logic as desktop.
+Streaming matches any selected provider in **USA**, with subscription, free, and ad-supported offers; rental/purchase-only offers are excluded. No selected service means no streaming-availability restriction. Discover results do not include runtime; details load it on demand. Multi-device rooms and group voting are not part of this prototype.
 
 ## Validation
 
 ```sh
 pnpm lint
 pnpm typecheck
+pnpm test:server
 pnpm build
+# In another terminal: pnpm start --port 3001
 pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-Keep a server running at `http://localhost:3000` for browser tests. For a production preview, stop the development server, run `pnpm build`, then `pnpm start` in a separate terminal. Avoid building while the development server is running. Tests cover desktop and mobile filtering, shortlist persistence, connection failures, and direct TMDB requests with mocked responses. On NixOS, use a system Chromium binary:
+Browser tests use a running server at `http://localhost:3001`, or `BASE_URL`. They intercept the app's JSON API to verify desktop/mobile interaction, same-origin requests, errors, and shortlist persistence. Server tests inject a TMDB fetcher to verify query validation, canonical URLs, credential handling, cache options, demo behavior, and sanitized errors. Tests do not require real credentials.
+
+On NixOS, select a system Chromium binary:
 
 ```sh
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="$(command -v chromium)" pnpm test:e2e
 ```
 
-## Structure
-
-- `src/app/page.tsx` — client-side interface, state, persistence, and requests.
-- `src/app/globals.css` — responsive visual design and mobile filter sheet.
-- `src/lib/tmdb.ts` — TMDB types, request builder, authentication, and errors.
-- `src/lib/demo.ts` — local sample collection and matching logic.
-- `tests/prototype.spec.ts` — browser interaction and request-contract tests.
-- `flake.nix` / `flake.lock` — pinned Nix development environment.
-
-## Data and attribution
+## Attribution
 
 This product uses the TMDB API but is not endorsed or certified by TMDB. Movie information and artwork belong to their respective owners. Streaming availability is provided by [JustWatch](https://www.justwatch.com/).
 
-Reference: [TMDB Discover API](https://developer.themoviedb.org/reference/discover-movie), [authentication](https://developer.themoviedb.org/docs/authentication-application), [watch providers](https://developer.themoviedb.org/reference/watch-providers-movie-list), and [official logos](https://www.themoviedb.org/about/logos-attribution).
+References: [TMDB Discover](https://developer.themoviedb.org/reference/discover-movie), [TMDB authentication](https://developer.themoviedb.org/docs/authentication-application), [Next.js fetch caching](https://nextjs.org/docs/app/api-reference/functions/fetch), [Vercel cache headers](https://vercel.com/docs/caching/cache-control-headers).

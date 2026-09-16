@@ -95,3 +95,10 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="$(command -v chromium)" pnpm test:e2e
 This product uses the TMDB API but is not endorsed or certified by TMDB. Movie information and artwork belong to their respective owners. Streaming availability is provided by [JustWatch](https://www.justwatch.com/).
 
 References: [TMDB Discover](https://developer.themoviedb.org/reference/discover-movie), [TMDB authentication](https://developer.themoviedb.org/docs/authentication-application), [Next.js fetch caching](https://nextjs.org/docs/app/api-reference/functions/fetch), [Vercel cache headers](https://vercel.com/docs/caching/cache-control-headers).
+
+## Current deployment
+
+Production: <https://cs422-movie-night.vercel.app>  
+Vercel project: <https://vercel.com/davidlove121s-projects/cs422-movie-night>
+
+The production deployment was verified with real TMDB data, US streaming filters, movie details, and CDN cache hits for repeated landing and filtered requests. Unauthenticated requests are redirected to Vercel sign-in. The browser bundle and returned movie JSON were checked for credential leakage. Validation passed: 10 browser tests, 8 server tests, lint, TypeScript, and the production build.

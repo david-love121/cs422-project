@@ -1,27 +1,23 @@
 "use client";
 
 import Link from "next/link";
+import VetoSession from "@/components/veto-session";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  ArrowDown,
   ArrowRight,
   Bookmark,
   Check,
   ChevronDown,
-  Clapperboard,
   Clock3,
   ExternalLink,
   Film,
   Globe2,
   Heart,
   LoaderCircle,
-  Popcorn,
   RotateCcw,
   Search,
   SlidersHorizontal,
-  Sparkles,
   Star,
-  Ticket,
   Tv,
   X,
 } from "lucide-react";
@@ -41,7 +37,6 @@ import {
 import {
   DEMO_GENRES,
   DEMO_LANGUAGES,
-  DEMO_MOVIES,
   DEMO_PROVIDERS,
   filterDemoMovies,
 } from "@/lib/demo";
@@ -199,7 +194,7 @@ function FilterPanel({
     <div className="filter-panel">
       <div className="filter-heading">
         <h2>
-          <SlidersHorizontal size={17} /> Make it your night
+          <SlidersHorizontal size={17} /> Filter movies
         </h2>
         <button
           className="text-button reset-button"
@@ -211,7 +206,7 @@ function FilterPanel({
       </div>
       <section className="filter-section">
         <div className="label-row">
-          <h3>What’s the mood?</h3>
+          <h3>Genres</h3>
           <span>Pick a few</span>
         </div>
         <div className="genre-chips">
@@ -399,9 +394,9 @@ function FilterPanel({
       <div className="filter-tip">
         <Heart size={17} />
         <p>
-          A little something for everyone.
+          Save ideas for the group.
           <br />
-          <span>Find a few favorites, then decide together.</span>
+          <span>Each viewer can nominate a movie.</span>
         </p>
       </div>
     </div>
@@ -422,7 +417,9 @@ export default function Home() {
   const [saved, setSaved] = useState<Movie[]>([]);
   const [storageReady, setStorageReady] = useState(false);
   const [storageNote, setStorageNote] = useState("");
-  const [view, setView] = useState<"explore" | "shortlist">("explore");
+  const [view, setView] = useState<"session" | "explore" | "shortlist">(
+    "session",
+  );
   const [page, setPage] = useState(1);
   const [retry, setRetry] = useState(0);
   const [live, setLive] = useState<{
@@ -601,7 +598,7 @@ export default function Home() {
     setSelectedMovie(movie);
     setDetail({ movie: null, loading: !!token, error: "" });
   }
-  function switchView(nextView: "explore" | "shortlist") {
+  function switchView(nextView: "session" | "explore" | "shortlist") {
     setView(nextView);
   }
   function closeConnection() {
@@ -678,506 +675,523 @@ export default function Home() {
 
   return (
     <>
-      <a href="#movies" className="skip-link">
-        Skip to movies
+      <a href="#main-content" className="skip-link">
+        Skip to content
       </a>
       <header className="site-header">
         <div className="header-inner">
-          <Link href="/" className="brand" aria-label="Movie Night home">
-            <span className="brand-mark">
-              <Clapperboard size={23} strokeWidth={1.6} />
+          <Link href="/" className="brand" aria-label="Veto home">
+            <span className="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 32 32" width="25" height="25" fill="none">
+                <path
+                  d="m7 9 9 16L26 7"
+                  stroke="currentColor"
+                  strokeWidth="3.5"
+                  strokeLinecap="square"
+                />
+              </svg>
             </span>
-            <span>
-              movie<span className="brand-light">night</span>
-              <span className="brand-dot">.</span>
-            </span>
+            <span>veto</span>
           </Link>
           <nav className="main-nav" aria-label="Main navigation">
             <button
+              className={view === "session" ? "active" : ""}
+              aria-current={view === "session" ? "page" : undefined}
+              onClick={() => switchView("session")}
+            >
+              Decide together
+            </button>
+            <button
               className={view === "explore" ? "active" : ""}
+              aria-current={view === "explore" ? "page" : undefined}
               onClick={() => switchView("explore")}
             >
               Explore
             </button>
             <button
               className={view === "shortlist" ? "active" : ""}
+              aria-current={view === "shortlist" ? "page" : undefined}
               onClick={() => switchView("shortlist")}
             >
-              Shortlist <span className="nav-count">{saved.length}</span>
+              Shortlist
             </button>
           </nav>
-          <button
-            className={`connection-button ${token ? "connected" : ""}`}
-            onClick={() => {
-              setConnectionError("");
-              setConnectionOpen(true);
-            }}
-          >
-            <span className="status-dot" />
-            <span>{token ? "TMDB connected" : "Connect TMDB"}</span>
-            <ArrowRight size={14} />
-          </button>
+          {view !== "session" && (
+            <button
+              className={`connection-button ${token ? "connected" : ""}`}
+              onClick={() => {
+                setConnectionError("");
+                setConnectionOpen(true);
+              }}
+            >
+              <span className="status-dot" />
+              <span>{token ? "TMDB connected" : "Connect TMDB"}</span>
+              <ArrowRight size={14} />
+            </button>
+          )}
         </div>
       </header>
 
-      <main className="page-shell">
-        <section className="hero" aria-labelledby="hero-title">
-          <div className="hero-copy">
-            <div className="eyebrow">
-              <span />
-              THE BEST NIGHTS START WITH A MOVIE
-            </div>
-            <h1 id="hero-title">
-              Find your next
-              <br />
-              <em>“everyone’s in.”</em>
-            </h1>
-            <p>
-              Big laughs, wild adventures, or just one more plot twist.
-              <br className="desktop-break" /> Find something you’ll all want to
-              watch.
-            </p>
-            <button
-              className="hero-link"
-              onClick={() =>
-                resultsRef.current?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                })
-              }
-            >
-              Let’s find your movie <ArrowDown size={16} />
-            </button>
-          </div>
-          <div className="hero-art" aria-hidden="true">
-            <span className="orbit orbit-one" />
-            <span className="orbit orbit-two" />
-            <Sparkles className="hero-sparkle" size={28} strokeWidth={1} />
-            <div className="hero-posters">
-              {[
-                DEMO_MOVIES.find((movie) => movie.id === 508442),
-                DEMO_MOVIES.find((movie) => movie.id === 120),
-                DEMO_MOVIES.find((movie) => movie.id === 120467),
-              ].map((movie, index) => (
-                <div className={`hero-poster hero-poster-${index}`} key={index}>
-                  {movie ? <Poster movie={movie} /> : <Film size={40} />}
-                </div>
-              ))}
-            </div>
-            <div className="hero-ticket">
-              <span className="ticket-icon">
-                <Popcorn size={23} />
-              </span>
-              <div>
-                Good company. Great cinema.
-                <span>Your next movie night, sorted.</span>
-              </div>
-              <Heart size={16} />
-            </div>
-            <span className="hero-caption">
-              ONE COUCH. ENDLESS POSSIBILITIES.
-            </span>
-          </div>
-        </section>
-
-        <div className={`collection-banner ${token ? "live-banner" : ""}`}>
-          <span className="banner-icon">
-            {token ? <Globe2 size={17} /> : <Ticket size={18} />}
-          </span>
-          <p>
-            {token ? (
-              <>
-                <strong>You’re exploring TMDB.</strong> Live movies and
-                streaming services, fetched on your device.
-              </>
-            ) : (
-              <>
-                <strong>A little preview of movie night.</strong> Explore our
-                sample collection, or connect TMDB for live results.
-              </>
-            )}
-          </p>
-          <button onClick={() => setConnectionOpen(true)}>
-            {token ? "Connection settings" : "Connect TMDB"}
-            <ArrowRight size={14} />
-          </button>
-        </div>
-
-        <div
-          className={`workspace ${view === "shortlist" ? "shortlist-workspace" : ""}`}
-        >
-          {view === "explore" && (
-            <aside className="desktop-filters" aria-label="Movie filters">
-              {filterPanel}
-            </aside>
-          )}
-          <section
-            id="movies"
-            className="results"
-            ref={resultsRef}
-            aria-labelledby="results-heading"
-            aria-busy={loading}
-          >
-            <div className="results-topline">
-              <div>
-                <div className="eyebrow small">
+      <main id="main-content" className="page-shell">
+        {view === "session" ? (
+          <VetoSession saved={saved} onExplore={() => switchView("explore")} />
+        ) : (
+          <>
+            <section className="hero" aria-labelledby="hero-title">
+              <div className="hero-copy">
+                <div className="eyebrow">THE VETO COLLECTION</div>
+                <h1 id="hero-title">
                   {view === "shortlist"
-                    ? "THE ONES WORTH SAVING"
-                    : "LESS SCROLLING, MORE WATCHING"}
-                </div>
-                <h2 id="results-heading">
+                    ? "Your shortlist."
+                    : "A good place to start."}
+                </h1>
+                <p>
                   {view === "shortlist"
-                    ? "Your shortlist"
-                    : filterCount
-                      ? "A little more your style"
-                      : "Made for movie night"}
-                  <span className="result-count">
-                    {loading ? "…" : total.toLocaleString()}
-                  </span>
-                </h2>
-                <p className="results-description">
-                  {view === "shortlist"
-                    ? "Gather your favorites. Let the group make the final call."
-                    : token
-                      ? "Your preferences. A whole world of movies."
-                      : "A few crowd-pleasers to get the conversation started."}
+                    ? "Keep a few ideas close. Each viewer can nominate a saved movie when the group is ready."
+                    : "Explore real movies, compare the details, and save a few ideas for your group."}
                 </p>
               </div>
-              {view === "explore" && (
-                <label className="sort-control">
-                  <span>Sort by</span>
-                  <select
-                    aria-label="Sort movies"
-                    value={filters.sort}
-                    onChange={(event) =>
-                      changeFilters({ ...filters, sort: event.target.value })
-                    }
-                  >
-                    <option value="popularity.desc">Most popular</option>
-                    <option value="vote_average.desc">Top rated</option>
-                    <option value="primary_release_date.desc">
-                      Newest first
-                    </option>
-                    <option value="title.asc">Title A–Z</option>
-                  </select>
-                </label>
-              )}
-            </div>
-            {view === "explore" && (
-              <div className="mobile-filter-row">
-                <button
-                  className="secondary-button"
-                  onClick={() => setFiltersOpen(true)}
-                >
-                  <SlidersHorizontal size={16} />
-                  Filters {filterCount > 0 && <span>{filterCount}</span>}
-                </button>
-                <span>
-                  {token ? "Live TMDB results" : "Sample collection"} · USA
-                </span>
-              </div>
-            )}
-            {view === "explore" && filterCount > 0 && (
-              <div className="active-filters" aria-label="Active filters">
-                {filters.genres.map((id) => (
-                  <button
-                    key={id}
-                    onClick={() =>
-                      changeFilters({
-                        ...filters,
-                        genres: filters.genres.filter((genre) => genre !== id),
-                      })
-                    }
-                  >
-                    {genres.find((genre) => genre.id === id)?.name || "Genre"}
-                    <X size={12} />
-                    <span className="sr-only">Remove filter</span>
-                  </button>
-                ))}
-                {filters.providers.map((id) => (
-                  <button
-                    key={`p${id}`}
-                    onClick={() =>
-                      changeFilters({
-                        ...filters,
-                        providers: filters.providers.filter(
-                          (provider) => provider !== id,
-                        ),
-                      })
-                    }
-                  >
-                    {providers.find((provider) => provider.provider_id === id)
-                      ?.provider_name || "Service"}
-                    <X size={12} />
-                    <span className="sr-only">Remove filter</span>
-                  </button>
-                ))}
-                {filters.language && (
-                  <button
-                    onClick={() => changeFilters({ ...filters, language: "" })}
-                  >
-                    {languages.find(
-                      (language) => language.iso_639_1 === filters.language,
-                    )?.english_name || filters.language}
-                    <X size={12} />
-                    <span className="sr-only">Remove filter</span>
-                  </button>
-                )}
-                {filters.runtime && (
-                  <button
-                    onClick={() => changeFilters({ ...filters, runtime: "" })}
-                  >
-                    {
-                      RUNTIME_OPTIONS.find(
-                        ([value]) => value === filters.runtime,
-                      )?.[1]
-                    }
-                    <X size={12} />
-                    <span className="sr-only">Remove filter</span>
-                  </button>
-                )}
-                {filters.year && (
-                  <button
-                    onClick={() => changeFilters({ ...filters, year: "" })}
-                  >
-                    {
-                      YEAR_OPTIONS.find(
-                        ([value]) => value === filters.year,
-                      )?.[1]
-                    }
-                    <X size={12} />
-                    <span className="sr-only">Remove filter</span>
-                  </button>
-                )}
-                {filters.rating && (
-                  <button
-                    onClick={() => changeFilters({ ...filters, rating: "" })}
-                  >
-                    {filters.rating}+ rating
-                    <X size={12} />
-                    <span className="sr-only">Remove filter</span>
-                  </button>
-                )}
-                <button
-                  className="clear-all"
-                  onClick={() => changeFilters(DEFAULT_FILTERS)}
-                >
-                  Clear all
-                </button>
-              </div>
-            )}
-            {!token && filters.providers.length > 0 && view === "explore" && (
-              <p className="sample-availability">
-                <Tv size={14} />
-                Sample service assignments only. Connect TMDB to check current
-                US availability.
-              </p>
-            )}
-            {storageNote && <p className="field-hint">{storageNote}</p>}
-            <div className="sr-only" aria-live="polite">
-              {loading
-                ? "Loading movies"
-                : `${total} ${view === "shortlist" ? "saved movies" : "movies found"}`}
-            </div>
-            {loading ? (
-              <div
-                className="movie-grid skeleton-grid"
-                aria-label="Loading movies"
+              <button
+                className="secondary-button"
+                onClick={() => switchView("session")}
               >
-                {Array.from({ length: 8 }, (_, index) => (
-                  <div className="skeleton-card" key={index}>
-                    <div />
-                    <span />
-                    <span />
-                  </div>
-                ))}
-              </div>
-            ) : error ? (
-              <div className="empty-state" role="alert">
-                <Globe2 size={34} />
-                <h3>Let’s reconnect.</h3>
-                <p>{error}</p>
-                <div className="empty-actions">
-                  <button
-                    className="primary-button"
-                    onClick={() => {
-                      setLive((previous) => ({ ...previous, loading: true }));
-                      setRetry((value) => value + 1);
-                    }}
-                  >
-                    Try again
-                  </button>
-                  <button
-                    className="secondary-button"
-                    onClick={() => setConnectionOpen(true)}
-                  >
-                    Connection settings
-                  </button>
-                </div>
-              </div>
-            ) : movies.length === 0 ? (
-              <div className="empty-state">
-                <Popcorn size={40} strokeWidth={1.25} />
-                <h3>
-                  {view === "shortlist"
-                    ? "Your movie night starts here."
-                    : "A plot twist. No matches yet."}
-                </h3>
-                <p>
-                  {view === "shortlist"
-                    ? "Save a movie that catches your eye and it’ll be waiting here."
-                    : token
-                      ? "Try a different genre or give yourself a little more time."
-                      : "Try fewer filters, or connect TMDB to explore beyond this sample collection."}
-                </p>
-                <button
-                  className="primary-button"
-                  onClick={() =>
-                    view === "shortlist"
-                      ? switchView("explore")
-                      : changeFilters(DEFAULT_FILTERS)
-                  }
-                >
-                  {view === "shortlist" ? "Explore movies" : "Reset filters"}
-                  <ArrowRight size={16} />
-                </button>
-              </div>
-            ) : (
-              <div className="movie-grid">
-                {movies.map((movie) => {
-                  const isSaved = saved.some((item) => item.id === movie.id);
-                  const movieGenres = movie.genre_ids
-                    .map((id) => genres.find((genre) => genre.id === id)?.name)
-                    .filter(Boolean);
-                  return (
-                    <article className="movie-card" key={movie.id}>
-                      <div className="movie-art">
-                        <button
-                          className="poster-button"
-                          aria-label={`View details for ${movie.title}`}
-                          onClick={() => openMovie(movie)}
-                        >
-                          <Poster movie={movie} />
-                          <span className="poster-hover">
-                            Take a closer look <ArrowRight size={15} />
-                          </span>
-                        </button>
-                        <span className="rating-badge">
-                          <Star size={11} fill="currentColor" />
-                          {movie.vote_average > 0
-                            ? movie.vote_average.toFixed(1)
-                            : "New"}
-                        </span>
-                        <button
-                          className={`save-button ${isSaved ? "saved" : ""}`}
-                          aria-label={
-                            isSaved
-                              ? `Remove ${movie.title} from shortlist`
-                              : `Save ${movie.title}`
-                          }
-                          aria-pressed={isSaved}
-                          onClick={() => toggleSaved(movie)}
-                        >
-                          {isSaved ? (
-                            <Check size={17} />
-                          ) : (
-                            <Bookmark size={17} />
-                          )}
-                        </button>
-                      </div>
-                      <div className="movie-info">
-                        <button
-                          className="movie-title"
-                          onClick={() => openMovie(movie)}
-                        >
-                          {movie.title}
-                        </button>
-                        <div className="movie-meta">
-                          <span>
-                            {movie.release_date?.slice(0, 4) || "Release TBA"}
-                          </span>
-                          <span className="meta-dot" />
-                          <span>
-                            {movie.original_language?.toUpperCase() || "—"}
-                          </span>
-                          {!!movie.runtime && (
-                            <>
-                              <span className="meta-dot" />
-                              <span>{movie.runtime} min</span>
-                            </>
-                          )}
-                        </div>
-                        <p className="movie-genres">
-                          {movieGenres.slice(0, 2).join(" / ") ||
-                            "Discover something different"}
-                        </p>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-            {!loading &&
-              !error &&
-              token &&
-              view === "explore" &&
-              live.pages > 1 && (
-                <div className="pagination">
-                  <button
-                    className="secondary-button"
-                    disabled={page === 1}
-                    onClick={() => {
-                      setPage((value) => value - 1);
-                      setLive((previous) => ({ ...previous, loading: true }));
-                      resultsRef.current?.scrollIntoView({
-                        behavior: "smooth",
-                      });
-                    }}
-                  >
-                    Previous
-                  </button>
-                  <span>
-                    Page {page} of {live.pages.toLocaleString()}
-                  </span>
-                  <button
-                    className="secondary-button"
-                    disabled={page >= live.pages}
-                    onClick={() => {
-                      setPage((value) => value + 1);
-                      setLive((previous) => ({ ...previous, loading: true }));
-                      resultsRef.current?.scrollIntoView({
-                        behavior: "smooth",
-                      });
-                    }}
-                  >
-                    Next
-                    <ArrowRight size={15} />
-                  </button>
-                </div>
+                Decide together <ArrowRight size={16} />
+              </button>
+            </section>
+
+            <div className={`collection-banner ${token ? "live-banner" : ""}`}>
+              <span className="banner-icon">
+                <Globe2 size={17} />
+              </span>
+              <p>
+                {token ? (
+                  <>
+                    <strong>You’re exploring TMDB.</strong> Live movies and
+                    streaming services, fetched on your device.
+                  </>
+                ) : (
+                  <>
+                    <strong>Sample collection.</strong> Explore the local movie
+                    records, or connect TMDB for live results.
+                  </>
+                )}
+              </p>
+              <button onClick={() => setConnectionOpen(true)}>
+                {token ? "Connection settings" : "Connect TMDB"}
+                <ArrowRight size={14} />
+              </button>
+            </div>
+
+            <div
+              className={`workspace ${view === "shortlist" ? "shortlist-workspace" : ""}`}
+            >
+              {view === "explore" && (
+                <aside className="desktop-filters" aria-label="Movie filters">
+                  {filterPanel}
+                </aside>
               )}
-            {!token && view === "explore" && movies.length > 0 && (
-              <div className="collection-end">
-                <span />
-                <Popcorn size={18} />
-                <span />
-                <p>
-                  Just a taste of what’s out there.
-                  <button onClick={() => setConnectionOpen(true)}>
-                    Explore the full TMDB collection <ArrowRight size={13} />
-                  </button>
-                </p>
-              </div>
-            )}
-          </section>
-        </div>
+              <section
+                id="movies"
+                className="results"
+                ref={resultsRef}
+                aria-labelledby="results-heading"
+                aria-busy={loading}
+              >
+                <div className="results-topline">
+                  <div>
+                    <div className="eyebrow small">
+                      {view === "shortlist"
+                        ? "SAVED ON THIS DEVICE"
+                        : "BROWSE & COMPARE"}
+                    </div>
+                    <h2 id="results-heading">
+                      {view === "shortlist"
+                        ? "Your shortlist"
+                        : filterCount
+                          ? "Matching movies"
+                          : "Explore movies"}
+                      <span className="result-count">
+                        {loading ? "…" : total.toLocaleString()}
+                      </span>
+                    </h2>
+                    <p className="results-description">
+                      {view === "shortlist"
+                        ? "Saved ideas are available for nominations in Decide together."
+                        : token
+                          ? "Live catalog results matching your filters."
+                          : "Real movie records in a local sample collection."}
+                    </p>
+                  </div>
+                  {view === "explore" && (
+                    <label className="sort-control">
+                      <span>Sort by</span>
+                      <select
+                        aria-label="Sort movies"
+                        value={filters.sort}
+                        onChange={(event) =>
+                          changeFilters({
+                            ...filters,
+                            sort: event.target.value,
+                          })
+                        }
+                      >
+                        <option value="popularity.desc">Most popular</option>
+                        <option value="vote_average.desc">Top rated</option>
+                        <option value="primary_release_date.desc">
+                          Newest first
+                        </option>
+                        <option value="title.asc">Title A–Z</option>
+                      </select>
+                    </label>
+                  )}
+                </div>
+                {view === "explore" && (
+                  <div className="mobile-filter-row">
+                    <button
+                      className="secondary-button"
+                      onClick={() => setFiltersOpen(true)}
+                    >
+                      <SlidersHorizontal size={16} />
+                      Filters {filterCount > 0 && <span>{filterCount}</span>}
+                    </button>
+                    <span>
+                      {token ? "Live TMDB results" : "Sample collection"} · USA
+                    </span>
+                  </div>
+                )}
+                {view === "explore" && filterCount > 0 && (
+                  <div className="active-filters" aria-label="Active filters">
+                    {filters.genres.map((id) => (
+                      <button
+                        key={id}
+                        onClick={() =>
+                          changeFilters({
+                            ...filters,
+                            genres: filters.genres.filter(
+                              (genre) => genre !== id,
+                            ),
+                          })
+                        }
+                      >
+                        {genres.find((genre) => genre.id === id)?.name ||
+                          "Genre"}
+                        <X size={12} />
+                        <span className="sr-only">Remove filter</span>
+                      </button>
+                    ))}
+                    {filters.providers.map((id) => (
+                      <button
+                        key={`p${id}`}
+                        onClick={() =>
+                          changeFilters({
+                            ...filters,
+                            providers: filters.providers.filter(
+                              (provider) => provider !== id,
+                            ),
+                          })
+                        }
+                      >
+                        {providers.find(
+                          (provider) => provider.provider_id === id,
+                        )?.provider_name || "Service"}
+                        <X size={12} />
+                        <span className="sr-only">Remove filter</span>
+                      </button>
+                    ))}
+                    {filters.language && (
+                      <button
+                        onClick={() =>
+                          changeFilters({ ...filters, language: "" })
+                        }
+                      >
+                        {languages.find(
+                          (language) => language.iso_639_1 === filters.language,
+                        )?.english_name || filters.language}
+                        <X size={12} />
+                        <span className="sr-only">Remove filter</span>
+                      </button>
+                    )}
+                    {filters.runtime && (
+                      <button
+                        onClick={() =>
+                          changeFilters({ ...filters, runtime: "" })
+                        }
+                      >
+                        {
+                          RUNTIME_OPTIONS.find(
+                            ([value]) => value === filters.runtime,
+                          )?.[1]
+                        }
+                        <X size={12} />
+                        <span className="sr-only">Remove filter</span>
+                      </button>
+                    )}
+                    {filters.year && (
+                      <button
+                        onClick={() => changeFilters({ ...filters, year: "" })}
+                      >
+                        {
+                          YEAR_OPTIONS.find(
+                            ([value]) => value === filters.year,
+                          )?.[1]
+                        }
+                        <X size={12} />
+                        <span className="sr-only">Remove filter</span>
+                      </button>
+                    )}
+                    {filters.rating && (
+                      <button
+                        onClick={() =>
+                          changeFilters({ ...filters, rating: "" })
+                        }
+                      >
+                        {filters.rating}+ rating
+                        <X size={12} />
+                        <span className="sr-only">Remove filter</span>
+                      </button>
+                    )}
+                    <button
+                      className="clear-all"
+                      onClick={() => changeFilters(DEFAULT_FILTERS)}
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                )}
+                {!token &&
+                  filters.providers.length > 0 &&
+                  view === "explore" && (
+                    <p className="sample-availability">
+                      <Tv size={14} />
+                      Sample service assignments only. Connect TMDB to check
+                      current US availability.
+                    </p>
+                  )}
+                {storageNote && <p className="field-hint">{storageNote}</p>}
+                <div className="sr-only" aria-live="polite">
+                  {loading
+                    ? "Loading movies"
+                    : `${total} ${view === "shortlist" ? "saved movies" : "movies found"}`}
+                </div>
+                {loading ? (
+                  <div
+                    className="movie-grid skeleton-grid"
+                    aria-label="Loading movies"
+                  >
+                    {Array.from({ length: 8 }, (_, index) => (
+                      <div className="skeleton-card" key={index}>
+                        <div />
+                        <span />
+                        <span />
+                      </div>
+                    ))}
+                  </div>
+                ) : error ? (
+                  <div className="empty-state" role="alert">
+                    <Globe2 size={34} />
+                    <h3>Couldn’t load the catalog.</h3>
+                    <p>{error}</p>
+                    <div className="empty-actions">
+                      <button
+                        className="primary-button"
+                        onClick={() => {
+                          setLive((previous) => ({
+                            ...previous,
+                            loading: true,
+                          }));
+                          setRetry((value) => value + 1);
+                        }}
+                      >
+                        Try again
+                      </button>
+                      <button
+                        className="secondary-button"
+                        onClick={() => setConnectionOpen(true)}
+                      >
+                        Connection settings
+                      </button>
+                    </div>
+                  </div>
+                ) : movies.length === 0 ? (
+                  <div className="empty-state">
+                    <Film size={36} strokeWidth={1.25} />
+                    <h3>
+                      {view === "shortlist"
+                        ? "No saved movies yet."
+                        : "No matching movies."}
+                    </h3>
+                    <p>
+                      {view === "shortlist"
+                        ? "Save a movie from Explore to make it available for nominations."
+                        : token
+                          ? "Try fewer filters or a different genre."
+                          : "Try fewer filters, or connect TMDB to explore beyond this sample collection."}
+                    </p>
+                    <button
+                      className="primary-button"
+                      onClick={() =>
+                        view === "shortlist"
+                          ? switchView("explore")
+                          : changeFilters(DEFAULT_FILTERS)
+                      }
+                    >
+                      {view === "shortlist"
+                        ? "Explore movies"
+                        : "Reset filters"}
+                      <ArrowRight size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="movie-grid">
+                    {movies.map((movie) => {
+                      const isSaved = saved.some(
+                        (item) => item.id === movie.id,
+                      );
+                      const movieGenres = movie.genre_ids
+                        .map(
+                          (id) => genres.find((genre) => genre.id === id)?.name,
+                        )
+                        .filter(Boolean);
+                      return (
+                        <article className="movie-card" key={movie.id}>
+                          <div className="movie-art">
+                            <button
+                              className="poster-button"
+                              aria-label={`View details for ${movie.title}`}
+                              onClick={() => openMovie(movie)}
+                            >
+                              <Poster movie={movie} />
+                              <span className="poster-hover">
+                                View details <ArrowRight size={15} />
+                              </span>
+                            </button>
+                            <span className="rating-badge">
+                              <Star size={11} fill="currentColor" />
+                              {movie.vote_average > 0
+                                ? movie.vote_average.toFixed(1)
+                                : "New"}
+                            </span>
+                            <button
+                              className={`save-button ${isSaved ? "saved" : ""}`}
+                              aria-label={
+                                isSaved
+                                  ? `Remove ${movie.title} from shortlist`
+                                  : `Save ${movie.title}`
+                              }
+                              aria-pressed={isSaved}
+                              onClick={() => toggleSaved(movie)}
+                            >
+                              {isSaved ? (
+                                <Check size={17} />
+                              ) : (
+                                <Bookmark size={17} />
+                              )}
+                            </button>
+                          </div>
+                          <div className="movie-info">
+                            <button
+                              className="movie-title"
+                              onClick={() => openMovie(movie)}
+                            >
+                              {movie.title}
+                            </button>
+                            <div className="movie-meta">
+                              <span>
+                                {movie.release_date?.slice(0, 4) ||
+                                  "Release TBA"}
+                              </span>
+                              <span className="meta-dot" />
+                              <span>
+                                {movie.original_language?.toUpperCase() || "—"}
+                              </span>
+                              {!!movie.runtime && (
+                                <>
+                                  <span className="meta-dot" />
+                                  <span>{movie.runtime} min</span>
+                                </>
+                              )}
+                            </div>
+                            <p className="movie-genres">
+                              {movieGenres.slice(0, 2).join(" / ") ||
+                                "Genre unavailable"}
+                            </p>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+                {!loading &&
+                  !error &&
+                  token &&
+                  view === "explore" &&
+                  live.pages > 1 && (
+                    <div className="pagination">
+                      <button
+                        className="secondary-button"
+                        disabled={page === 1}
+                        onClick={() => {
+                          setPage((value) => value - 1);
+                          setLive((previous) => ({
+                            ...previous,
+                            loading: true,
+                          }));
+                          resultsRef.current?.scrollIntoView({
+                            behavior: "smooth",
+                          });
+                        }}
+                      >
+                        Previous
+                      </button>
+                      <span>
+                        Page {page} of {live.pages.toLocaleString()}
+                      </span>
+                      <button
+                        className="secondary-button"
+                        disabled={page >= live.pages}
+                        onClick={() => {
+                          setPage((value) => value + 1);
+                          setLive((previous) => ({
+                            ...previous,
+                            loading: true,
+                          }));
+                          resultsRef.current?.scrollIntoView({
+                            behavior: "smooth",
+                          });
+                        }}
+                      >
+                        Next
+                        <ArrowRight size={15} />
+                      </button>
+                    </div>
+                  )}
+                {!token && view === "explore" && movies.length > 0 && (
+                  <div className="collection-end">
+                    <span />
+                    <Film size={18} />
+                    <span />
+                    <p>
+                      End of the sample collection.
+                      <button onClick={() => setConnectionOpen(true)}>
+                        Explore the full TMDB collection{" "}
+                        <ArrowRight size={13} />
+                      </button>
+                    </p>
+                  </div>
+                )}
+              </section>
+            </div>
+          </>
+        )}
       </main>
 
       <footer className="site-footer">
         <div className="footer-main">
           <span className="footer-brand">
-            <Clapperboard size={17} />A good movie brings us together.
+            <span className="footer-wordmark">veto</span> A shared choice. Every
+            voice counts.
           </span>
-          <span>Made for your next night in.</span>
+          <span>CS422 · Functional prototype</span>
         </div>
         <div className="attribution">
           <a
@@ -1244,11 +1258,10 @@ export default function Home() {
           <div className="modal-symbol">
             <Globe2 size={25} />
           </div>
-          <div className="eyebrow small">A BIGGER WORLD OF MOVIES</div>
+          <div className="eyebrow small">LIVE MOVIE DATA</div>
           <h2 className="modal-title">Connect to TMDB</h2>
           <p className="modal-intro">
-            Bring the full movie collection and current US streaming options to
-            your movie night.
+            Browse live movie information and US streaming listings from TMDB.
           </p>
           <form onSubmit={connect}>
             <label className="token-label">
@@ -1330,7 +1343,7 @@ export default function Home() {
           <div className="detail-layout">
             <Poster movie={detailMovie} />
             <div className="detail-copy">
-              <div className="eyebrow small">YOUR NEXT MOVIE NIGHT?</div>
+              <div className="eyebrow small">MOVIE DETAILS</div>
               <h2 className="modal-title">{detailMovie.title}</h2>
               <div className="detail-meta">
                 <span>
@@ -1363,7 +1376,7 @@ export default function Home() {
               </div>
               <p className="overview">
                 {detailMovie.overview ||
-                  "No synopsis available yet. Sometimes the best movies are a surprise."}
+                  "No synopsis available for this movie."}
               </p>
               {detail.error && (
                 <p className="form-error" role="alert">

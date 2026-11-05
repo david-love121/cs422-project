@@ -29,8 +29,9 @@ test("genre filtering, reset, and shortlist survive reload", async ({
   isMobile,
 }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: "Explore", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: /Find your next/ }),
+    page.getByRole("heading", { name: /A good place to start/ }),
   ).toBeVisible();
   const filters = await openFilters(page, isMobile);
   await filters.getByRole("button", { name: "Animation", exact: true }).click();
@@ -141,6 +142,7 @@ test("browser sends category and US streaming filters directly to TMDB", async (
   const discovery: URL[] = [];
   await mockTmdb(page, discovery);
   await page.goto("/");
+  await page.getByRole("button", { name: "Explore", exact: true }).click();
   await connect(page);
   await expect(
     page.getByRole("button", {
@@ -198,6 +200,7 @@ test("rejected TMDB credentials show a recoverable error", async ({ page }) => {
     }),
   );
   await page.goto("/");
+  await page.getByRole("button", { name: "Explore", exact: true }).click();
   await connect(page, "invalid-test-token");
   await expect(
     page.getByRole("dialog", { name: "Connect to TMDB" }).getByRole("alert"),
@@ -219,9 +222,10 @@ test("empty live results and unchanged filter reset stay usable", async ({
 }) => {
   await mockTmdb(page, [], true);
   await page.goto("/");
+  await page.getByRole("button", { name: "Explore", exact: true }).click();
   await connect(page);
   await expect(
-    page.getByRole("heading", { name: "A plot twist. No matches yet." }),
+    page.getByRole("heading", { name: "No matching movies." }),
   ).toBeVisible();
   const filters = await openFilters(page, isMobile);
   await filters
@@ -229,7 +233,7 @@ test("empty live results and unchanged filter reset stay usable", async ({
     .click();
   await closeFilters(page, isMobile);
   await expect(
-    page.getByRole("heading", { name: "A plot twist. No matches yet." }),
+    page.getByRole("heading", { name: "No matching movies." }),
   ).toBeVisible();
   await expect(page.locator("#movies")).toHaveAttribute("aria-busy", "false");
 });

@@ -1,5 +1,5 @@
 {
-  description = "Movie Night Next.js prototype development shell";
+  description = "Veto Next.js prototype development shell";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   outputs = { nixpkgs, ... }:
     let
@@ -12,7 +12,7 @@
           default = pkgs.mkShell {
             packages = [ pkgs.nodejs_24 pkgs.pnpm ];
             shellHook = ''
-              echo "Movie Night: pnpm install, then pnpm dev"
+              echo "Veto: pnpm install, then pnpm dev"
             '';
           };
         });

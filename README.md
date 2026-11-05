@@ -1,12 +1,13 @@
-# CS422 Project
+# Veto
 
-Movie Night is a responsive movie discovery prototype. This `main` branch runs TMDB requests directly in the user's browser. The Next.js application lives in [`prototype/`](./prototype/).
+A shared-device movie decision tool for two to six viewers. Agree on practical limits, give everyone a suggestion, respond privately, and choose a film with no recorded vetoes.
 
-Start with the [prototype README](./prototype/README.md) for setup and a walkthrough of the API:
+Veto is Team 9’s CS422 functional prototype. Its design follows the group’s low-fidelity study: willingness is different from enthusiasm, a firm objection counts, and the group should understand what is saved, submitted, and carried into another round.
 
-- [Request lifecycle and authentication](./prototype/README.md#how-a-live-request-works)
-- [Endpoints, response envelopes, and API objects](./prototype/README.md#endpoints-and-response-objects)
-- [How filters become a Discover request](./prototype/README.md#how-filters-become-a-discover-request)
-- [Storage, caching, and error handling](./prototype/README.md#storage-caching-and-errors)
+The Next.js app lives in [`prototype/`](./prototype/).
 
-The [`server-side` branch](https://github.com/david-love121/cs422-project/tree/server-side) contains the version that keeps the TMDB credential on the server and caches shared responses; its README explains that architecture separately.
+- [Run the app and understand its limits](./prototype/README.md)
+- [Functional prototype specification, information model, and walkthrough](./prototype/docs/functional-prototype.md)
+- [Movie catalog API and request flow](./prototype/docs/tmdb-client-api.md)
+
+The [`server-side` branch](https://github.com/david-love121/cs422-project/tree/server-side) contains the earlier server-backed movie discovery version, including its separate TMDB caching and deployment documentation.

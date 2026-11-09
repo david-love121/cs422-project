@@ -82,6 +82,7 @@ export default function VetoSession({
   onExplore,
   catalogMovies = DEMO_MOVIES,
   catalogNote,
+  demo = false,
 }: {
   saved: Movie[];
   onSaveMovie: (movie: Movie) => void;
@@ -89,6 +90,7 @@ export default function VetoSession({
   onExplore: () => void;
   catalogMovies?: Movie[];
   catalogNote?: string;
+  demo?: boolean;
 }) {
   const [s, setSession] = useState<Session | null>(null);
   const [now, setNow] = useState(0);
@@ -107,7 +109,7 @@ export default function VetoSession({
     const timer = setTimeout(() => {
       let restored: Session | null = null;
       try {
-        restored = readSession(sessionStorage.getItem(SESSION_KEY));
+        if (!demo) restored = readSession(sessionStorage.getItem(SESSION_KEY));
       } catch {
         setStorageNote(
           "This browser cannot save the round. Stay in Decide together; switching views or reloading will lose it.",
@@ -121,9 +123,9 @@ export default function VetoSession({
       clearTimeout(timer);
       clearInterval(clock);
     };
-  }, []);
+  }, [demo]);
   useEffect(() => {
-    if (!s) return;
+    if (!s || demo) return;
     let warning: ReturnType<typeof setTimeout> | undefined;
     try {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
@@ -137,7 +139,7 @@ export default function VetoSession({
       );
     }
     return () => clearTimeout(warning);
-  }, [s]);
+  }, [s, demo]);
   const activePhase = s?.phase;
   const activeNomination = s?.nomination;
   const activeVoter = s?.voter;
@@ -429,6 +431,7 @@ export default function VetoSession({
                 <label className="v-field">
                   Number of viewers
                   <select
+                    data-demo="viewer-count"
                     value={s.limits.viewers}
                     onChange={(e) =>
                       update({
@@ -451,6 +454,7 @@ export default function VetoSession({
                     <label className="v-field" key={i}>
                       Viewer {i + 1}
                       <input
+                        data-demo-viewer={i}
                         aria-label={`Viewer ${i + 1} name`}
                         maxLength={30}
                         value={n}
@@ -527,6 +531,7 @@ export default function VetoSession({
                   <div className="v-chips">
                     {DEMO_LANGUAGES.map((l) => (
                       <button
+                        data-demo-language={l.iso_639_1}
                         key={l.iso_639_1}
                         type="button"
                         aria-pressed={s.limits.audioLanguages.includes(
@@ -558,6 +563,7 @@ export default function VetoSession({
                 <label className="v-check">
                   <input
                     type="checkbox"
+                    data-demo="subtitles"
                     checked={s.limits.subtitles}
                     onChange={(e) =>
                       update({
@@ -572,7 +578,7 @@ export default function VetoSession({
                   reveal preferences.
                 </p>
                 <div className="v-actions">
-                  <button type="submit" className="v-primary">
+                  <button type="submit" className="v-primary" data-demo="continue">
                     Continue to suggestions <ArrowRight size={17} />
                   </button>
                 </div>
@@ -610,6 +616,7 @@ export default function VetoSession({
                       Find a movie
                       <input
                         type="search"
+                        data-demo="search"
                         placeholder="Search the collection or your saved ideas"
                         value={search}
                         onChange={(e) => { setSearch(e.target.value); setSuggestionError(""); }}
@@ -619,6 +626,7 @@ export default function VetoSession({
                       {available.map((m) => (
                         <button
                           key={m.id}
+                          data-demo-movie={m.id}
                           className="v-catalog-row"
                           onClick={() => addMovie(m)}
                         >
@@ -681,6 +689,7 @@ export default function VetoSession({
                       className="v-primary"
                       disabled={!s.candidates.length || !eligible}
                       onClick={startVoting}
+                      data-demo="start-voting"
                     >
                       Start private voting <ArrowRight size={16} />
                     </button>
@@ -811,6 +820,7 @@ export default function VetoSession({
               )}
               <button
                 className="v-primary"
+                data-demo={s.voter < s.limits.viewers ? "begin-turn" : "show-results"}
                 onClick={() => {
                   update({
                     phase: s.voter < s.limits.viewers ? s.resume : "choose",
@@ -861,6 +871,7 @@ export default function VetoSession({
                 {RESPONSE_OPTIONS.map((r) => (
                   <button
                     key={r.value}
+                    data-demo-response={r.value}
                     className={`v-response ${r.value === "veto" ? "v-veto" : ""}`}
                     aria-pressed={
                       !conflict &&
@@ -920,6 +931,7 @@ export default function VetoSession({
                   className="v-primary"
                   disabled={!choice || conflict}
                   onClick={saveResponse}
+                  data-demo="save-response"
                 >
                   Save &amp; next <ArrowRight size={16} />
                 </button>
@@ -982,6 +994,7 @@ export default function VetoSession({
                 <button
                   className="v-primary"
                   disabled={s.candidates.some((c) => !s.draft[c.movie.id])}
+                  data-demo="finish-turn"
                   onClick={() => {
                     setSession(submitTurn(s));
                     setNotice("");
@@ -1014,6 +1027,7 @@ export default function VetoSession({
               <div className="v-results">
                 {results.map(({ candidate: c, counts, eliminated }) => (
                   <article
+                    data-demo-result={c.movie.id}
                     className={`v-panel v-result ${eliminated ? "is-eliminated" : ""}`}
                     key={c.movie.id}
                   >
@@ -1037,6 +1051,7 @@ export default function VetoSession({
                     {!eliminated && (
                       <button
                         className="v-secondary"
+                        data-demo-save={c.movie.id}
                         disabled={savedIds.has(c.movie.id)}
                         aria-label={savedIds.has(c.movie.id)
                           ? `${c.movie.title} is in your shortlist`
@@ -1062,7 +1077,7 @@ export default function VetoSession({
                 </p>
               )}
               <div className="v-actions">
-                <button className="v-primary" onClick={onOpenShortlist}>
+                <button className="v-primary" onClick={onOpenShortlist} data-demo="view-shortlist">
                   View shortlist <Bookmark size={16} />
                 </button>
                 <button

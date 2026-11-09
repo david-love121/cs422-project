@@ -22,7 +22,7 @@ Veto helps two to six people find movies they are willing and able to watch on o
 
 Each viewer has one active **preference** veto. Editing that response restores the allowance; another firm objection can pause the round. Accessibility, subtitle, audio, access, and time requirements are separate from taste and never spend a preference veto. A newly discovered access issue covers the private turn and offers a shared review with fresh ballots.
 
-Click the **Veto logo** to open settings. **Dark mode** switches the appearance; **Live data** switches Suggest and Explore between the prepared collection and the server-backed TMDB catalog. Both preferences are remembered. The defaults are light appearance and demo data. Switching the source preserves the current round and saved movies.
+Click the **Veto logo** to open settings. **Dark mode** switches the appearance; **Live data** switches Suggest and Explore between the prepared collection and the server-backed TMDB catalog. Both preferences are remembered. The defaults are light appearance and demo data. Switching the source preserves the current round and saved movies. **Clear shortlist** removes the movies saved on this device; it is disabled when the collection is empty. **Start demo** plays the guided walkthrough described below.
 
 ## Architecture and data flow
 
@@ -37,7 +37,8 @@ flowchart TD
         Results["Results: totals and surviving movies"]
         Explore["Explore: filters and movie details"]
         Shortlist["Shortlist: saved movies"]
-        Settings["Logo menu: theme and data source"]
+        Settings["Logo menu: settings, clear, start demo"]
+        Walkthrough["walkthrough.ts: timed UI interactions"]
         Client["tmdb-client.ts: same-origin requests"]
         RoundStore[("sessionStorage: current round")]
         SavedStore[("localStorage: shortlist and settings")]
@@ -46,6 +47,8 @@ flowchart TD
         Home --> Explore
         Home --> Shortlist
         Home --> Settings
+        Settings -->|"Start demo"| Walkthrough
+        Walkthrough -->|"Same input and click handlers"| Session
         Session --> Rules
         Rules --> Results
         Session <--> RoundStore
@@ -95,7 +98,8 @@ All application code is under [`prototype/`](./prototype/).
 | [`src/app/api/`](./prototype/src/app/api/) | Thin GET handlers for catalog options, movie pages, and movie details |
 | [`src/lib/server/query.ts`](./prototype/src/lib/server/query.ts) | Independent server validation, API errors, cache durations, and response headers |
 | [`src/lib/server/tmdb-service.ts`](./prototype/src/lib/server/tmdb-service.ts) | Server-only source selection, authenticated upstream fetching, response normalization, and sanitized failures |
-| [`src/components/settings-menu.tsx`](./prototype/src/components/settings-menu.tsx) | Logo dropdown with theme/source toggles, keyboard navigation, and outside-click dismissal |
+| [`src/components/demo-walkthrough.tsx`](./prototype/src/components/demo-walkthrough.tsx), [`src/lib/walkthrough.ts`](./prototype/src/lib/walkthrough.ts), [`src/app/demo.css`](./prototype/src/app/demo.css) | Playback controls/captions, the five-viewer interaction script, pointer/ripple animation, and presentation layout |
+| [`src/components/settings-menu.tsx`](./prototype/src/components/settings-menu.tsx) | Logo dropdown with theme/source toggles, shortlist clearing, guided-demo launch, keyboard navigation, and outside-click dismissal |
 | [`src/components/dialog.tsx`](./prototype/src/components/dialog.tsx) | Shared native dialog and movie-details modal behavior |
 | [`src/components/movie-poster.tsx`](./prototype/src/components/movie-poster.tsx) | Artwork display and fallback when an image is absent or fails |
 | [`src/app/globals.css`](./prototype/src/app/globals.css), [`src/app/veto.css`](./prototype/src/app/veto.css) | Shared colors, browsing UI, light/dark appearance, session states, and responsive layouts |
@@ -134,6 +138,16 @@ All application code is under [`prototype/`](./prototype/).
 Home's `addSaved` callback adds by movie ID only when absent. Result buttons become disabled **In shortlist** buttons once saved. Explore/details retain their separate save/remove toggle. Neither action writes to the voting ballots.
 
 `restartSession` explains and resets nominations/ballots while keeping the agreement and actual recorded objections. Reviewing limits returns to Setup; another set returns to Suggest. Deliberate reconsideration releases rejected IDs only after agreement. Restoring an active private vote/review always shows its cover first. Older stored `confirm`/`done` rounds migrate to Results, retaining all completed ballots and candidates rather than enforcing their previous single choice.
+
+### The automated live-demo walkthrough
+
+Open the logo menu and select **Start demo**. The roughly two-minute presentation uses prepared data, a party of **Maya, Leo, Priya, Sam, and Alex**, and five real movies. It fills out setup, enables Hindi/Tamil audio and required English subtitles, searches for each nomination, completes five private ballots, explains two vetoed titles, and saves the three survivors: Glass Onion, Maharaja, and The Adam Project.
+
+The walkthrough operates the actual interface. `walkthroughSteps` builds the ordered script; `runWalkthrough` finds controls through stable `data-demo` attributes, scrolls them into view, moves a pointer, shows click ripples, calls the normal button click handlers, and types through native input/change events. It does not insert completed ballots or results. The same eligibility checks, response-saving functions, tally, and shortlist callbacks used manually produce the demonstrated outcome.
+
+Step weights distribute the presentation across 120 seconds, with short reading pauses and captions for each chapter. The driver waits for controls to render and respects **Pause / Resume**, **Restart / Replay**, and **Exit demo** (also Escape). Reduced-motion settings remove animated scrolling and ripples while retaining the walkthrough.
+
+Demo state is separate from personal state: Home uses a temporary in-memory movie collection, the session skips browser-storage writes, and source preferences are not persisted during playback. Exit restores the previous workspace, data source, saved movies, and round. The underlying interface is inert during playback so stray clicks cannot disrupt the presentation; the playback controls remain available. Reloading also returns to personal data.
 
 ### Explore and the catalog API
 
@@ -208,6 +222,7 @@ pnpm test:e2e
 | `api.spec.ts` | Actual route-handler requests and an unintercepted browser-to-API browsing/save flow |
 | `prototype.spec.ts` | Discovery filters, details, retries, stored shortlist recovery, limits, and write failures |
 | `settings.spec.ts` | Persistent preferences, keyboard menu controls, source changes, errors, and request cancellation |
+| `walkthrough.test.ts`, `walkthrough.spec.ts` | Five-viewer story coherence, three truthful survivors, UI-driven playback, pause/replay/exit, personal-data isolation, and persistent shortlist clearing |
 | `veto-flow.spec.ts` | Nominations, private turns, totals, veto/access review, recovery, multiple survivor saves, persistence, and older completed rounds |
 
 Node runs the pure/server tests with the React server condition and TypeScript loader. Playwright runs desktop and iPhone 13 projects. By default it builds and owns a production demo server at `http://127.0.0.1:3001`, using no TMDB secret. Stop a development server first because the build shares `.next/`. `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` selects a compatible system Chromium binary; `BASE_URL` selects an existing external app. API checks explicitly request demo mode for repeatable results.

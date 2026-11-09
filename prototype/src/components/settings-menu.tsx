@@ -1,18 +1,24 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import { Globe2, Moon } from "lucide-react";
+import { Globe2, Moon, Play, Trash2 } from "lucide-react";
 
 export default function SettingsMenu({
   theme,
   dataMode,
   onThemeChange,
   onDataModeChange,
+  savedCount,
+  onClearShortlist,
+  onStartDemo,
 }: {
   theme: "light" | "dark";
   dataMode: "demo" | "live";
   onThemeChange: (theme: "light" | "dark") => void;
   onDataModeChange: (mode: "demo" | "live") => void;
+  savedCount: number;
+  onClearShortlist: () => void;
+  onStartDemo: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
@@ -50,11 +56,12 @@ export default function SettingsMenu({
       close();
     } else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
       event.preventDefault();
-      const index = options.current.findIndex((option) => option === document.activeElement);
+      const enabled = options.current.filter((option): option is HTMLButtonElement => !!option && !option.disabled);
+      const index = enabled.findIndex((option) => option === document.activeElement);
       const next = event.key === "Home" ? 0
-        : event.key === "End" ? 1
-          : (index + (event.key === "ArrowDown" ? 1 : -1) + 2) % 2;
-      options.current[next]?.focus();
+        : event.key === "End" ? enabled.length - 1
+          : (index + (event.key === "ArrowDown" ? 1 : -1) + enabled.length) % enabled.length;
+      enabled[next]?.focus();
     }
   }
 
@@ -76,7 +83,7 @@ export default function SettingsMenu({
         onKeyDown={(event) => {
           if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
-            openAt(event.key === "ArrowDown" ? 0 : 1);
+            openAt(event.key === "ArrowDown" ? 0 : 3);
           }
         }}
       >
@@ -112,6 +119,28 @@ export default function SettingsMenu({
             <Globe2 size={17} aria-hidden="true" />
             <span className="settings-copy">Live data<small>{dataMode === "live" ? "Live TMDB collection" : "Prepared demo collection"}</small></span>
             <span className="settings-value" aria-hidden="true">{dataMode === "live" ? "On" : "Off"}</span>
+          </button>
+          <div className="settings-separator" role="separator" />
+          <button
+            ref={(element) => { options.current[2] = element; }}
+            type="button"
+            role="menuitem"
+            aria-label="Clear shortlist"
+            disabled={savedCount === 0}
+            onClick={() => { close(); onClearShortlist(); }}
+          >
+            <Trash2 size={17} aria-hidden="true" />
+            <span className="settings-copy">Clear shortlist<small>{savedCount ? `${savedCount} saved ${savedCount === 1 ? "movie" : "movies"}` : "Your shortlist is empty"}</small></span>
+          </button>
+          <button
+            ref={(element) => { options.current[3] = element; }}
+            type="button"
+            role="menuitem"
+            aria-label="Start demo"
+            onClick={() => { close(); onStartDemo(); }}
+          >
+            <Play size={17} aria-hidden="true" />
+            <span className="settings-copy">Start demo<small>2-minute walkthrough · 5 viewers</small></span>
           </button>
         </div>
       )}

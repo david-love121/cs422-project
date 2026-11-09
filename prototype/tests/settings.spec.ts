@@ -127,7 +127,7 @@ test("logo settings support keyboard dismissal, outside clicks, and persistent t
   await page.keyboard.press("Home");
   await expect(dark).toBeFocused();
   await page.keyboard.press("End");
-  await expect(live).toBeFocused();
+  await expect(menu.getByRole("menuitem", { name: "Start demo", exact: true })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(menu).toBeHidden();
   await expect(logo).toBeFocused();

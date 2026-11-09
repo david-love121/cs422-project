@@ -1,6 +1,7 @@
 "use client";
 
 import VetoSession from "@/components/veto-session";
+import DemoWalkthrough from "@/components/demo-walkthrough";
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/dialog";
 import MoviePoster from "@/components/movie-poster";
@@ -363,6 +364,12 @@ export default function Home() {
   const isDemo = catalog?.mode === "demo";
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [saved, setSaved] = useState<Movie[]>([]);
+  const [demoRun, setDemoRun] = useState<number | null>(null);
+  const [demoSaved, setDemoSaved] = useState<Movie[]>([]);
+  const demoActive = demoRun !== null;
+  const activeSaved = demoActive ? demoSaved : saved;
+  const demoReturn = useRef<{ mode: "demo" | "live"; view: "session" | "explore" | "shortlist" } | null>(null);
+  const [shortlistNotice, setShortlistNotice] = useState("");
   const [storageReady, setStorageReady] = useState(false);
   const [storageNote, setStorageNote] = useState("");
   const [view, setView] = useState<"session" | "explore" | "shortlist">(
@@ -394,6 +401,12 @@ export default function Home() {
   }, [view]);
 
   useEffect(() => {
+    if (!shortlistNotice) return;
+    const timer = setTimeout(() => setShortlistNotice(""), 3500);
+    return () => clearTimeout(timer);
+  }, [shortlistNotice]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       try {
         const stored: unknown = JSON.parse(localStorage.getItem(PREFERENCES_KEY) || "null");
@@ -419,13 +432,13 @@ export default function Home() {
   }, [theme]);
 
   useEffect(() => {
-    if (!preferencesReady) return;
+    if (!preferencesReady || demoActive) return;
     try {
       localStorage.setItem(PREFERENCES_KEY, JSON.stringify({ theme, dataMode }));
     } catch {
       /* Settings still apply for this visit. */
     }
-  }, [theme, dataMode, preferencesReady]);
+  }, [theme, dataMode, preferencesReady, demoActive]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -538,8 +551,8 @@ export default function Home() {
     return () => controller.abort();
   }, [selectedMovie, dataMode]);
 
-  const movies = view === "shortlist" ? saved : live.movies;
-  const total = view === "shortlist" ? saved.length : live.total;
+  const movies = view === "shortlist" ? activeSaved : live.movies;
+  const total = view === "shortlist" ? activeSaved.length : live.total;
   const loading =
     view === "explore" && !catalogError && (!catalog || live.loading);
   const error = view === "explore" ? catalogError || live.error : "";
@@ -559,14 +572,14 @@ export default function Home() {
     setLive((previous) => ({ ...previous, loading: true }));
   }
   function toggleSaved(movie: Movie) {
-    setSaved((current) =>
+    (demoActive ? setDemoSaved : setSaved)((current) =>
       current.some((item) => item.id === movie.id)
         ? current.filter((item) => item.id !== movie.id)
         : [...current, movie],
     );
   }
   function addSaved(movie: Movie) {
-    setSaved((current) =>
+    (demoActive ? setDemoSaved : setSaved)((current) =>
       current.some((item) => item.id === movie.id) ? current : [...current, movie],
     );
   }
@@ -592,6 +605,27 @@ export default function Home() {
     setSelectedMovie(null);
     setDetail({ movie: null, loading: false, error: "" });
   }
+  function startDemo() {
+    if (!demoActive) demoReturn.current = { mode: dataMode, view };
+    changeDataMode("demo");
+    setSelectedMovie(null);
+    setFiltersOpen(false);
+    setShortlistNotice("");
+    setDemoSaved([]);
+    setView("session");
+    setDemoRun((previous) => (previous ?? 0) + 1);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
+  function exitDemo() {
+    const previous = demoReturn.current;
+    if (previous) {
+      changeDataMode(previous.mode);
+      setView(previous.view);
+    }
+    setDemoRun(null);
+    setDemoSaved([]);
+    demoReturn.current = null;
+  }
   function retryCollection() {
     if (!catalog) {
       setCatalogError("");
@@ -614,6 +648,7 @@ export default function Home() {
 
   return (
     <>
+      <div inert={demoActive} className={demoActive ? "demo-underway" : undefined}>
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
@@ -624,6 +659,9 @@ export default function Home() {
             dataMode={dataMode}
             onThemeChange={setTheme}
             onDataModeChange={changeDataMode}
+            savedCount={activeSaved.length}
+            onClearShortlist={() => { setSaved([]); setShortlistNotice("Shortlist cleared."); }}
+            onStartDemo={startDemo}
           />
           <nav className="main-nav" aria-label="Main navigation">
             <button
@@ -671,10 +709,12 @@ export default function Home() {
       </header>
 
       <main id="main-content" className="page-shell">
-        {storageNote && <p className="v-alert" role="status">{storageNote}</p>}
+        {!demoActive && storageNote && <p className="v-alert" role="status">{storageNote}</p>}
         {view === "session" ? (
           <VetoSession
-            saved={saved}
+            key={demoActive ? `demo-${demoRun}` : "round"}
+            demo={demoActive}
+            saved={activeSaved}
             onSaveMovie={addSaved}
             onOpenShortlist={() => switchView("shortlist")}
             onExplore={() => switchView("explore")}
@@ -993,7 +1033,7 @@ export default function Home() {
                 ) : (
                   <div className="movie-grid">
                     {movies.map((movie) => {
-                      const isSaved = saved.some(
+                      const isSaved = activeSaved.some(
                         (item) => item.id === movie.id,
                       );
                       const movieGenres = movie.genre_ids
@@ -1247,7 +1287,7 @@ export default function Home() {
                 className="primary-button"
                 onClick={() => toggleSaved(detailMovie)}
               >
-                {saved.some((movie) => movie.id === detailMovie.id) ? (
+                {activeSaved.some((movie) => movie.id === detailMovie.id) ? (
                   <>
                     <Check size={17} />
                     Saved to shortlist
@@ -1276,6 +1316,9 @@ export default function Home() {
           </div>
         </Modal>
       )}
+      </div>
+      {shortlistNotice && <p className="shortlist-feedback" role="status">{shortlistNotice}</p>}
+      {demoActive && <DemoWalkthrough key={demoRun} onExit={exitDemo} onReplay={startDemo} />}
     </>
   );
 }

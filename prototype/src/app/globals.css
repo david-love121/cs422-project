@@ -1579,3 +1579,7 @@ h1 {
 :root[data-theme="dark"] .settings-menu {
   box-shadow: 0 12px 35px #0006;
 }
+
+.settings-separator { height: 1px; margin: 6px 8px; background: var(--line); }
+.settings-menu > button:disabled { opacity: .45; cursor: default; background: transparent; }
+.shortlist-feedback { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 80; padding: 13px 22px; border: 1px solid var(--line); border-radius: 9px; background: var(--white); color: var(--ink); box-shadow: 0 6px 24px #102a2422; font-size: 13px; }

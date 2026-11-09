@@ -622,39 +622,6 @@
   display: block;
   margin-top: 5px;
 }
-.v-confirm {
-  max-width: 920px;
-  margin: auto;
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: 35px;
-}
-.v-confirm h2 {
-  font-size: 30px;
-  margin: 10px 0 14px;
-}
-.v-confirm p:not(.v-kicker) {
-  color: #60706b;
-  font-size: 13px;
-}
-.v-timing {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-  padding: 20px 0;
-  margin: 20px 0;
-  border-top: 1px solid #e0e6dc;
-  border-bottom: 1px solid #e0e6dc;
-}
-.v-timing dt {
-  font-size: 10px;
-  color: #65726c;
-  margin-bottom: 8px;
-}
-.v-timing dd {
-  font-size: 18px;
-  margin: 0;
-}
 .v-recovery {
   max-width: 850px;
   margin: auto;
@@ -778,22 +745,6 @@
   }
   .v-results {
     grid-template-columns: 1fr;
-  }
-  .v-confirm {
-    grid-template-columns: 1fr;
-    gap: 22px;
-  }
-  .v-confirm .v-artwork {
-    width: 110px;
-  }
-  .v-confirm h2 {
-    font-size: 27px;
-  }
-  .v-timing {
-    gap: 10px;
-  }
-  .v-timing dd {
-    font-size: 16px;
   }
   .v-cover {
     padding: 35px 22px;

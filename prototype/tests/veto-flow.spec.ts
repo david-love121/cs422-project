@@ -62,7 +62,7 @@ function resultFor(page: Page, title: string) {
   return page.getByRole("article").filter({ has: page.getByRole("heading", { name: title, exact: true }) });
 }
 
-test("two viewers nominate, submit covered ballots, respect a hard veto, and confirm a surviving film", async ({ page }, testInfo) => {
+test("two viewers nominate, submit covered ballots, and save a surviving movie permanently", async ({ page }, testInfo) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Who’s watching?", exact: true })).toBeVisible();
   await expect(page.getByText("One shared device · 2–6 viewers", { exact: true })).toHaveCount(0);
@@ -78,20 +78,23 @@ test("two viewers nominate, submit covered ballots, respect a hard veto, and con
   const survivor = resultFor(page, SECOND);
   await expect(eliminated.getByText("Eliminated", { exact: true })).toBeVisible();
   await expect(eliminated.locator(".v-counts > div")).toHaveText(["1Really Want", "0Okay", "0Prefer another", "1Veto"]);
-  await expect(eliminated.getByRole("button", { name: `Choose ${FIRST}`, exact: true })).toHaveCount(0);
-  await expect(survivor.getByText("Available — no vetoes", { exact: true })).toBeVisible();
+  await expect(eliminated.getByRole("button", { name: `Add ${FIRST} to shortlist`, exact: true })).toHaveCount(0);
+  await expect(survivor.getByText("Survived — no vetoes", { exact: true })).toBeVisible();
   await expect(survivor.locator(".v-counts > div")).toHaveText(["0Really Want", "1Okay", "1Prefer another", "0Veto"]);
   await expectNoOverflow(page);
   await page.screenshot({ path: `/tmp/veto-${testInfo.project.name}-results.png`, fullPage: true });
-  await survivor.getByRole("button", { name: `Choose ${SECOND}`, exact: true }).click();
-  await expect(page.getByRole("heading", { name: "One last check, together." })).toBeVisible();
-  await expect(page.getByText("Estimated film end", { exact: true })).toBeVisible();
-  const confirm = page.getByRole("button", { name: "Confirm our choice" });
-  await expect(confirm).toBeEnabled();
-  await expect(page.locator(".v-confirm input[type=checkbox]")).toHaveCount(0);
-  await confirm.click();
-  await expect(page.getByRole("heading", { name: "Your evening is decided." })).toBeVisible();
-  await expect(page.getByText(/Decision recorded\. Open Netflix yourselves/)).toBeVisible();
+  await survivor.getByRole("button", { name: `Add ${SECOND} to shortlist`, exact: true }).click();
+  await expect(survivor.getByRole("button", { name: `${SECOND} is in your shortlist`, exact: true })).toBeDisabled();
+  await expect(page.getByRole("heading", { name: "Your surviving movies.", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Confirm our choice", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "View shortlist", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Your shortlist.", exact: true })).toBeFocused();
+  await expect(page.getByRole("button", { name: `Remove ${SECOND} from shortlist`, exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: `Remove ${FIRST} from shortlist`, exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(resultFor(page, SECOND).getByRole("button", { name: `${SECOND} is in your shortlist`, exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Shortlist", exact: true }).click();
+  await expect(page.getByRole("button", { name: `Remove ${SECOND} from shortlist`, exact: true })).toBeVisible();
   await expectNoOverflow(page);
 });
 
@@ -121,7 +124,7 @@ test("a second genuine objection can pause the round, while correcting an accide
   await page.getByRole("button", { name: "Finish my turn" }).click();
   await submitTurn(page, ["Okay", "Okay"]);
   await page.getByRole("button", { name: "Show group results" }).click();
-  await expect(resultFor(page, FIRST).getByText("Available — no vetoes", { exact: true })).toBeVisible();
+  await expect(resultFor(page, FIRST).getByText("Survived — no vetoes", { exact: true })).toBeVisible();
   await expect(resultFor(page, SECOND).getByText("Eliminated", { exact: true })).toBeVisible();
 });
 
@@ -174,25 +177,64 @@ test("reload covers an active private ballot while preserving saved responses an
 });
 
 
-test("confirmation rechecks the actual time before recording a choice even when the displayed window is stale", async ({ page }) => {
+test("multiple survivors stay saveable after the original deadline and persist without duplicates", async ({ page }) => {
   await page.clock.install({ time: new Date("2026-11-05T20:00:00Z") });
   await prepareRound(page);
   await submitTurn(page, ["Okay", "Okay"]);
   await submitTurn(page, ["Okay", "Okay"]);
   await page.getByRole("button", { name: "Show group results" }).click();
-  await resultFor(page, SECOND).getByRole("button", { name: `Choose ${SECOND}`, exact: true }).click();
-  const confirm = page.getByRole("button", { name: "Confirm our choice" });
-  // Freeze refresh timers while the film still fits, so the displayed window
-  // remains stale throughout the subsequent click's scrolling/stability checks.
-  await page.clock.pauseAt(new Date("2026-11-05T20:01:00Z"));
-  await expect(confirm).toBeEnabled();
-  // Move wall-clock time without triggering the frozen 15-second refresh.
-  await page.clock.setSystemTime(new Date("2026-11-05T21:30:00Z"));
-  await confirm.click();
-  await expect(page.getByRole("heading", { name: "One last check, together." })).toBeVisible();
-  await expect(page.getByText("This movie no longer meets the shared limits. Return to results and choose a shorter option.", { exact: true })).toBeVisible();
-  await expect(confirm).toBeDisabled();
-  await expect(page.getByRole("heading", { name: "Your evening is decided." })).toHaveCount(0);
+  await page.clock.setSystemTime(new Date("2026-11-06T20:00:00Z"));
+  await page.reload();
+  for (const title of [FIRST, SECOND]) {
+    const result = resultFor(page, title);
+    const add = result.getByRole("button", { name: `Add ${title} to shortlist`, exact: true });
+    await expect(add).toBeEnabled();
+    await add.click();
+    await expect(result.getByRole("button", { name: `${title} is in your shortlist`, exact: true })).toBeDisabled();
+  }
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("movie-night-shortlist-v1") || "[]").length)).toBe(2);
+  await page.reload();
+  for (const title of [FIRST, SECOND])
+    await expect(resultFor(page, title).getByRole("button", { name: `${title} is in your shortlist`, exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "View shortlist", exact: true }).click();
+  for (const title of [FIRST, SECOND])
+    await expect(page.getByRole("button", { name: `Remove ${title} from shortlist`, exact: true })).toBeVisible();
+});
+
+test("an older confirmed round reopens at results so other survivors can be saved", async ({ page }) => {
+  await prepareRound(page);
+  await submitTurn(page, ["Okay", "Okay"]);
+  await submitTurn(page, ["Okay", "Okay"]);
+  await page.getByRole("button", { name: "Show group results" }).click();
+  await page.evaluate(() => {
+    const round = JSON.parse(sessionStorage.getItem("veto-session-v1")!);
+    sessionStorage.setItem("veto-session-v1", JSON.stringify({ ...round, phase: "done",
+      chosen: round.candidates[0].movie.id, confirmedAt: Date.now() }));
+  });
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Your surviving movies.", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your evening is decided.", exact: true })).toHaveCount(0);
+  await resultFor(page, SECOND).getByRole("button", { name: `Add ${SECOND} to shortlist`, exact: true }).click();
+  await expect(resultFor(page, FIRST).getByRole("button", { name: `Add ${FIRST} to shortlist`, exact: true })).toBeEnabled();
+});
+
+test("saving a survivor explains a failed persistent write while retaining it in memory", async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (this === localStorage && key === "movie-night-shortlist-v1")
+        throw new DOMException("Storage full", "QuotaExceededError");
+      original.call(this, key, value);
+    };
+  });
+  await prepareRound(page);
+  await submitTurn(page, ["Veto", "Okay"]);
+  await submitTurn(page, ["Okay", "Okay"]);
+  await page.getByRole("button", { name: "Show group results" }).click();
+  await resultFor(page, SECOND).getByRole("button", { name: `Add ${SECOND} to shortlist`, exact: true }).click();
+  await expect(page.getByText("Changes to your shortlist couldn’t be saved on this device. Keep this page open; reloading may lose them.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "View shortlist", exact: true }).click();
+  await expect(page.getByRole("button", { name: `Remove ${SECOND} from shortlist`, exact: true })).toBeVisible();
 });
 
 test("fresh-round recovery excludes objections while deliberate reconsideration releases them", async ({ page }) => {
@@ -332,7 +374,10 @@ test("three desktop viewers and six mobile viewers complete larger rounds with t
     ]);
   }
   await expectNoOverflow(page);
-  await resultFor(page, FIRST).getByRole("button", { name: `Choose ${FIRST}`, exact: true }).click();
-  await page.getByRole("button", { name: "Confirm our choice", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Your evening is decided." })).toBeVisible();
+  for (const title of titles.slice(0, 2)) {
+    await resultFor(page, title).getByRole("button", { name: `Add ${title} to shortlist`, exact: true }).click();
+    await expect(resultFor(page, title).getByRole("button", { name: `${title} is in your shortlist`, exact: true })).toBeDisabled();
+  }
+  await expect(page.getByRole("heading", { name: "Your surviving movies.", exact: true })).toBeVisible();
+  await expectNoOverflow(page);
 });

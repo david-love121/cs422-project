@@ -3,7 +3,6 @@ import {
   defaultLimits,
   eligibility,
   RESPONSE_OPTIONS,
-  tally,
   type Ballot,
   type Candidate,
   type Limits,
@@ -18,8 +17,6 @@ export type Phase =
   | "vote"
   | "review"
   | "choose"
-  | "confirm"
-  | "done"
   | "paused"
   | "stopped";
 export type Recovery = "another" | "limits" | "reconsider";
@@ -35,8 +32,6 @@ export type Session = {
   draft: Ballot;
   ballots: Ballot[];
   excluded: number[];
-  chosen: number | null;
-  confirmedAt: number | null;
   resume: "vote" | "review";
 };
 
@@ -53,8 +48,6 @@ export function freshSession(now = Date.now()): Session {
     draft: {},
     ballots: [],
     excluded: [],
-    chosen: null,
-    confirmedAt: null,
     resume: "vote",
   };
 }
@@ -125,27 +118,20 @@ export function parseSession(value: unknown): Session | null {
     !raw.ballots.every((ballot) => validBallot(ballot, candidates, true)) ||
     raw.ballots.length !== raw.voter) return null;
 
-  const phase = raw.phase as Phase;
-  const active = ["handoff", "vote", "review", "choose", "confirm", "done", "paused"].includes(phase);
+  // Older rounds ended with a single choice. Restore their complete ballots
+  // to results so every survivor can be saved without losing the round.
+  const phase: Phase = raw.phase === "confirm" || raw.phase === "done"
+    ? "choose" : raw.phase as Phase;
+  const active = ["handoff", "vote", "review", "choose", "paused"].includes(phase);
   if (active && (!candidates.length || raw.index >= candidates.length ||
     raw.nomination !== limits.viewers || !limits.services.length || !limits.audioLanguages.length)) return null;
   if (["vote", "review", "paused"].includes(phase) && raw.voter >= limits.viewers) return null;
   if (["setup", "suggest"].includes(phase) &&
     (raw.voter !== 0 || raw.index !== 0 || Object.keys(raw.draft).length)) return null;
-  if (["choose", "confirm", "done"].includes(phase) &&
+  if (phase === "choose" &&
     (raw.voter !== limits.viewers || Object.keys(raw.draft).length)) return null;
   if (phase === "handoff" && raw.voter === limits.viewers &&
     (Object.keys(raw.draft).length || raw.index !== 0 || raw.resume !== "vote")) return null;
-
-  const selected = candidates.find(({ movie }) => movie.id === raw.chosen);
-  if (phase === "confirm" || phase === "done") {
-    if (!selected || tally(candidates, raw.ballots).find(({ candidate }) => candidate.movie.id === raw.chosen)?.eliminated) return null;
-  } else if (raw.chosen !== null) return null;
-  if (phase === "done") {
-    if (typeof raw.confirmedAt !== "number" || !Number.isFinite(raw.confirmedAt) ||
-      !Number.isFinite(new Date(raw.confirmedAt).getTime()) ||
-      eligibility(selected!, limits as Limits, raw.confirmedAt).length) return null;
-  } else if (raw.confirmedAt !== null) return null;
 
   return {
     version: 1, phase,
@@ -153,8 +139,7 @@ export function parseSession(value: unknown): Session | null {
       audioLanguages: [...limits.audioLanguages], subtitles: limits.subtitles },
     names: [...raw.names] as string[], candidates, nomination: raw.nomination, voter: raw.voter,
     index: raw.index, draft: { ...raw.draft }, ballots: raw.ballots.map((ballot) => ({ ...ballot })),
-    excluded: [...raw.excluded], chosen: raw.chosen as number | null,
-    confirmedAt: raw.confirmedAt as number | null, resume: raw.resume as "vote" | "review",
+    excluded: [...raw.excluded], resume: raw.resume as "vote" | "review",
   };
 }
 
@@ -221,12 +206,4 @@ export function startVoting(session: Session, now = Date.now()): Session {
 export function pauseSession(session: Session): Session {
   if (session.phase !== "vote" && session.phase !== "review") return session;
   return { ...session, phase: "paused", resume: session.phase };
-}
-
-export function confirmDecision(session: Session, now: number): Session {
-  const selected = session.candidates.find(({ movie }) => movie.id === session.chosen);
-  if (session.phase !== "confirm" || session.ballots.length !== session.limits.viewers ||
-    !selected || eligibility(selected, session.limits, now).length ||
-    tally(session.candidates, session.ballots).find(({ candidate }) => candidate.movie.id === selected.movie.id)?.eliminated) return session;
-  return { ...session, phase: "done", confirmedAt: now };
 }

@@ -6,7 +6,7 @@ import { Modal } from "@/components/dialog";
 import MoviePoster from "@/components/movie-poster";
 import SettingsMenu from "@/components/settings-menu";
 import { parseSavedMovies } from "@/lib/movie";
-import { CATALOG_SNAPSHOT_DATE } from "@/lib/demo";
+import { CATALOG_SNAPSHOT_DATE, DEMO_GENRES } from "@/lib/demo";
 import {
   MAX_FILTER_IDS,
   RUNTIME_OPTIONS,
@@ -356,7 +356,7 @@ export default function Home() {
   const [catalogError, setCatalogError] = useState("");
   const [catalogRetry, setCatalogRetry] = useState(0);
   const [catalogStarted, setCatalogStarted] = useState(false);
-  const genres = catalog?.genres ?? [];
+  const genres = catalog?.genres ?? DEMO_GENRES;
   const languages = catalog?.languages ?? [];
   const providers = catalog?.providers ?? [];
   const isLive = catalog?.mode === "live";
@@ -384,9 +384,14 @@ export default function Home() {
     error: string;
   }>({ movie: null, loading: false, error: "" });
   const resultsRef = useRef<HTMLElement>(null);
+  const workspaceHeadingRef = useRef<HTMLHeadingElement>(null);
   const catalogRequest = useRef<AbortController | null>(null);
   const moviesRequest = useRef<AbortController | null>(null);
   const detailRequest = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (view !== "session") workspaceHeadingRef.current?.focus();
+  }, [view]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -560,6 +565,11 @@ export default function Home() {
         : [...current, movie],
     );
   }
+  function addSaved(movie: Movie) {
+    setSaved((current) =>
+      current.some((item) => item.id === movie.id) ? current : [...current, movie],
+    );
+  }
   function openMovie(movie: Movie) {
     setSelectedMovie(movie);
     setDetail({ movie: null, loading: true, error: "" });
@@ -661,9 +671,12 @@ export default function Home() {
       </header>
 
       <main id="main-content" className="page-shell">
+        {storageNote && <p className="v-alert" role="status">{storageNote}</p>}
         {view === "session" ? (
           <VetoSession
             saved={saved}
+            onSaveMovie={addSaved}
+            onOpenShortlist={() => switchView("shortlist")}
             onExplore={() => switchView("explore")}
             catalogMovies={dataMode === "live" ? live.movies : undefined}
             catalogNote={dataMode === "live"
@@ -676,7 +689,7 @@ export default function Home() {
             <section className="hero" aria-labelledby="hero-title">
               <div className="hero-copy">
                 <div className="eyebrow">THE VETO COLLECTION</div>
-                <h1 id="hero-title">
+                <h1 id="hero-title" ref={workspaceHeadingRef} tabIndex={-1}>
                   {view === "shortlist"
                     ? "Your shortlist."
                     : "A good place to start."}
@@ -915,7 +928,6 @@ export default function Home() {
                       Recheck current access in your streaming service.
                     </p>
                   )}
-                {storageNote && <p className="field-hint" role="status">{storageNote}</p>}
                 <div className="sr-only" aria-live="polite">
                   {loading
                     ? "Loading movies"

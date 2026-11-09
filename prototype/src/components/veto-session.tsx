@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
+  Bookmark,
   Check,
   Clock3,
   EyeOff,
@@ -35,7 +36,6 @@ import {
   submitTurn,
   startVoting as startSessionVoting,
   pauseSession,
-  confirmDecision,
   type Phase,
   type Recovery,
   type Session,
@@ -77,11 +77,15 @@ function CandidateInfo({ candidate }: { candidate: Candidate }) {
 
 export default function VetoSession({
   saved,
+  onSaveMovie,
+  onOpenShortlist,
   onExplore,
   catalogMovies = DEMO_MOVIES,
   catalogNote,
 }: {
   saved: Movie[];
+  onSaveMovie: (movie: Movie) => void;
+  onOpenShortlist: () => void;
   onExplore: () => void;
   catalogMovies?: Movie[];
   catalogNote?: string;
@@ -162,8 +166,8 @@ export default function VetoSession({
     s.names[index]?.trim() || `Viewer ${index + 1}`;
   const windowMinutes = remainingMinutes(s.limits.deadline, now);
   const current = s.candidates[s.index];
-  const selected = s.candidates.find((c) => c.movie.id === s.chosen);
   const results = tally(s.candidates, s.ballots);
+  const savedIds = new Set(saved.map((movie) => movie.id));
   const eligible = s.candidates.every(
     (c) => eligibility(c, s.limits, now).length === 0,
   );
@@ -189,9 +193,7 @@ export default function VetoSession({
     review: "Review your responses.",
     choose: results.every((r) => r.eliminated)
       ? "No movie survived this round."
-      : "A shared choice starts here.",
-    confirm: "One last check, together.",
-    done: "Your evening is decided.",
+      : "Your surviving movies.",
     paused: "The round is paused.",
     stopped: "That’s a wrap for tonight.",
   };
@@ -296,23 +298,10 @@ export default function VetoSession({
     setSession(next);
     setNotice("");
   }
-  function confirmChoice(confirmedAt: number) {
-    const next = confirmDecision(s!, confirmedAt);
-    if (next === s) {
-      setNotice(
-        "This movie no longer meets the shared limits. Return to results and choose a shorter option.",
-      );
-      setNow(confirmedAt);
-      return;
-    }
-    setSession(next);
-    setNotice("");
-  }
-
   return (
     <section className="v-session" aria-label="Veto shared movie decision">
       <ol className="v-stages" aria-label="Decision progress">
-        {["Setup", "Suggest", "Vote", "Choose"].map((label, i) => (
+        {["Setup", "Suggest", "Vote", "Results"].map((label, i) => (
           <li
             key={label}
             aria-current={i === stage ? "step" : undefined}
@@ -334,18 +323,18 @@ export default function VetoSession({
                 : ["vote", "review"].includes(s.phase)
                   ? "Your responses stay covered when you finish. You can correct them before submitting."
                   : s.phase === "choose"
-                    ? "A veto removes a film. The remaining options are yours to choose together."
+                    ? "Voting is complete. Add any surviving movies to your shortlist to keep them for later."
                     : "A little clarity makes room for a better evening."}
           </p>
         </div>
-          <div className="v-time-chip">
+          {s.phase !== "choose" && <div className="v-time-chip">
             <Clock3 size={17} />
             <span>
               <strong>{windowMinutes} min</strong> remaining
               <br />
               End by {time(s.limits.deadline)}
             </span>
-          </div>
+          </div>}
       </header>}
       {storageNote && (
         <p className="v-alert" role="status">
@@ -1017,8 +1006,9 @@ export default function VetoSession({
                 <ShieldCheck size={20} />
                 <p>
                   <strong>{s.ballots.length} completed ballots.</strong> Every
-                  row shows all four totals. A surviving title is an option; the
-                  group decides. Order follows your shortlist.
+                  row shows all four totals. A veto removes a movie. Keep as
+                  many survivors as you like in Shortlist; they stay saved on
+                  this device. Order follows your round.
                 </p>
               </div>
               <div className="v-results">
@@ -1032,7 +1022,7 @@ export default function VetoSession({
                       <span
                         className={`v-status ${eliminated ? "v-status-no" : ""}`}
                       >
-                        {eliminated ? "Eliminated" : "Available — no vetoes"}
+                        {eliminated ? "Eliminated" : "Survived — no vetoes"}
                       </span>
                     </div>
                     <CandidateInfo candidate={c} />
@@ -1045,23 +1035,21 @@ export default function VetoSession({
                       ))}
                     </div>
                     {!eliminated && (
-                      <>
-                        {eligibility(c, s.limits, now).map((reason) => (
-                          <p className="v-error" key={reason}>
-                            {reason}
-                          </p>
-                        ))}
-                        <button
-                          className="v-secondary"
-                          disabled={eligibility(c, s.limits, now).length > 0}
-                          onClick={() => {
-                            setNow(Date.now());
-                            update({ chosen: c.movie.id, phase: "confirm" });
-                          }}
-                        >
-                          Choose {c.movie.title} <ArrowRight size={15} />
-                        </button>
-                      </>
+                      <button
+                        className="v-secondary"
+                        disabled={savedIds.has(c.movie.id)}
+                        aria-label={savedIds.has(c.movie.id)
+                          ? `${c.movie.title} is in your shortlist`
+                          : `Add ${c.movie.title} to shortlist`}
+                        onClick={() => {
+                          onSaveMovie(c.movie);
+                          setNotice(`${c.movie.title} added to your shortlist.`);
+                        }}
+                      >
+                        {savedIds.has(c.movie.id)
+                          ? <>In shortlist <Check size={15} /></>
+                          : <>Add to shortlist <Bookmark size={15} /></>}
+                      </button>
                     )}
                   </article>
                 ))}
@@ -1074,6 +1062,9 @@ export default function VetoSession({
                 </p>
               )}
               <div className="v-actions">
+                <button className="v-primary" onClick={onOpenShortlist}>
+                  View shortlist <Bookmark size={16} />
+                </button>
                 <button
                   className="v-secondary"
                   onClick={() => setRestart("another")}
@@ -1094,80 +1085,6 @@ export default function VetoSession({
                 </button>
               </div>
             </>
-          )}
-
-          {(s.phase === "confirm" || s.phase === "done") && selected && (
-            <div className="v-panel v-confirm">
-              <MoviePoster movie={selected.movie} className="v-artwork" fallbackClassName="" showFallbackTitle={false} iconSize={30} lazy={false} />
-              <div>
-                <p className="v-kicker">
-                  {s.phase === "done"
-                    ? "CONFIRMED BY THE GROUP"
-                    : "SELECTED BY THE GROUP"}
-                </p>
-                <h2>{selected.movie.title}</h2>
-                <p>{selected.movie.overview}</p>
-                <CandidateInfo candidate={selected} />
-                <dl className="v-timing">
-                  <div>
-                    <dt>
-                      {s.phase === "done" ? "Recorded start" : "Start now"}
-                    </dt>
-                    <dd>{time(s.confirmedAt || now)}</dd>
-                  </div>
-                  <div>
-                    <dt>Estimated film end</dt>
-                    <dd>
-                      {time(
-                        (s.confirmedAt || now) +
-                          selected.movie.runtime! * 60_000,
-                      )}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Movie must end by</dt>
-                    <dd>{time(s.limits.deadline)}</dd>
-                  </div>
-                </dl>
-                {s.phase === "confirm" ? (
-                  <>
-                    {eligibility(selected, s.limits, now).map((reason) => (
-                      <p className="v-error" key={reason}>
-                        {reason}
-                      </p>
-                    ))}
-                    <div className="v-actions">
-                      <button
-                        className="v-primary"
-                        disabled={eligibility(selected, s.limits, now).length > 0}
-                        onClick={() => confirmChoice(Date.now())}
-                      >
-                        Confirm our choice <Check size={17} />
-                      </button>
-                      <button
-                        className="v-text"
-                        onClick={() =>
-                          update({ phase: "choose", chosen: null })
-                        }
-                      >
-                        Back to results
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="v-notice">
-                      Decision recorded. Open {serviceName(selected.source)}{" "}
-                      yourselves to start watching. If you start later, recheck
-                      the finish time.
-                    </p>
-                    <button className="v-secondary" onClick={startEvening}>
-                      Plan another evening
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
           )}
 
           {s.phase === "paused" && (

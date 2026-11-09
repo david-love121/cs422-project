@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DEMO_MOVIES } from "../src/lib/demo";
 import {
-  confirmDecision,
   freshSession,
   parseSession,
   pauseSession,
@@ -32,7 +31,7 @@ const complete = (first = "okay", second = "okay") => ({
   [movies[1].id]: second,
 }) as Session["draft"];
 
-test("restoration validates ballots, phase invariants, chosen identity, and metadata", () => {
+test("restoration validates ballots, phase invariants, and metadata", () => {
   const result = session({ phase: "choose", voter: 2, ballots: [complete(), complete()] });
   assert.ok(parseSession(result));
   const invalid: unknown[] = [
@@ -41,9 +40,7 @@ test("restoration validates ballots, phase invariants, chosen identity, and meta
     { ...result, ballots: [complete(), { ...complete(), 999999: "okay" }] },
     { ...result, ballots: [complete("veto", "veto"), complete()] },
     { ...result, phase: "vote" },
-    { ...result, phase: "confirm", chosen: 999999 },
-    { ...result, phase: "confirm", chosen: movies[0].id, ballots: [complete("veto"), complete()] },
-    { ...result, phase: "done", chosen: movies[0].id, confirmedAt: null },
+    { ...result, phase: "done", voter: 1, ballots: [complete()] },
     { ...result, candidates: [{ ...candidates[0], movie: { id: -1, title: "Broken" } }] },
     { ...result, candidates: [{ ...candidates[0], movie: { ...movies[0], runtime: "101" } }, candidates[1]] },
     { ...result, excluded: [movies[0].id] },
@@ -139,14 +136,15 @@ test("prototype defaults preserve requirements and access review never spends a 
   assert.deepEqual(next.ballots, []);
 });
 
-test("confirmation rejects expired or vetoed choices using the actual confirmation time", () => {
-  const prior = session({ phase: "confirm", chosen: movies[0].id, voter: 2, ballots: [complete(), complete()] });
-  assert.equal(confirmDecision(prior, now).phase, "done");
-  assert.equal(confirmDecision(prior, Date.parse(prior.limits.deadline)), prior);
-  const vetoed = { ...prior, ballots: [complete("veto"), complete()] };
-  assert.equal(confirmDecision(vetoed, now), vetoed);
-  const done = confirmDecision(prior, now);
-  assert.ok(parseSession(done));
-  done.limits.services.push(337);
-  assert.deepEqual(freshSession(now).limits.services, [8, 9]);
+test("legacy single-choice rounds restore all completed voting results without a selected winner", () => {
+  const prior = session({ phase: "choose", voter: 2, ballots: [complete("veto"), complete()] });
+  for (const phase of ["confirm", "done"]) {
+    const restored = readSession(JSON.stringify({ ...prior, phase,
+      chosen: movies[1].id, confirmedAt: now }));
+    assert.equal(restored?.phase, "choose");
+    assert.deepEqual(restored?.candidates, prior.candidates);
+    assert.deepEqual(restored?.ballots, prior.ballots);
+    assert.equal("chosen" in restored!, false);
+    assert.equal("confirmedAt" in restored!, false);
+  }
 });

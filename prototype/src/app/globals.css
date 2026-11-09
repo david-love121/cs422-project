@@ -1472,7 +1472,7 @@ h1 {
   .active-filters button, .secondary-button, .v-panel, .v-field input,
   .v-field select, .v-chips button, .v-secondary, .v-catalog,
   .v-catalog-row, .v-shortlist-item, .v-response, .v-radio,
-  .v-review-row, .v-counts, .v-timing, .v-recovery-grid,
+  .v-review-row, .v-counts, .v-recovery-grid,
   .v-time-chip, .v-section-title > span, .v-stages li span
 ) {
   border-color: var(--line);
@@ -1513,7 +1513,7 @@ h1 {
   .v-section-title p, .v-hint, .v-privacy-note span, .v-catalog-row small,
   .v-shortlist-item small, .v-meta, .v-empty, .v-cover p,
   .v-vote-movie p:not(.v-kicker), .v-response small, .v-results-note p,
-  .v-counts span, .v-confirm p:not(.v-kicker), .v-timing dt,
+  .v-counts span,
   .v-recovery p, .collection-end, .empty-state > svg, .v-artwork
 ) {
   color: var(--muted);

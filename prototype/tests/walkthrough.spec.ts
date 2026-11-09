@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { WALKTHROUGH_DURATION } from "../src/lib/walkthrough";
 
 const personal = { id: 508442, title: "My saved movie", runtime: 101 };
 async function openMenu(page: Page) {
@@ -44,8 +45,8 @@ test("the automated five-viewer demo reaches three survivors without overwriting
   await menu.getByRole("menuitem", { name: "Start demo", exact: true }).click();
   const demo = page.getByRole("region", { name: "Guided demo", exact: true });
   await expect(demo).toBeVisible();
-  // Virtual time exercises the same full 120-second script with reduced motion.
-  await page.clock.runFor(140_000);
+  // Virtual time exercises the complete presentation with reduced motion.
+  await page.clock.runFor(WALKTHROUGH_DURATION + 20_000);
   await expect(demo).toHaveAttribute("data-demo-status", "complete");
   await expect(page.locator(".movie-grid .movie-card")).toHaveCount(3);
   await expect(page.locator(".movie-grid")).toContainText("Glass Onion");
@@ -112,4 +113,44 @@ test("starting from live data uses only prepared movies during playback and rest
   await page.getByRole("button", { name: "Exit demo", exact: true }).click();
   await openMenu(page);
   await expect(menu.getByRole("menuitemcheckbox", { name: "Live data", exact: true })).toHaveAttribute("aria-checked", "true");
+});
+
+test("amber click ripples stay at their document location while the cursor moves and the page scrolls", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.clock.install();
+  await page.goto("/");
+  const menu = await openMenu(page);
+  await menu.getByRole("menuitem", { name: "Start demo", exact: true }).click();
+  await page.clock.runFor(2000);
+  for (let tick = 0; tick < 24 && await page.locator(".demo-ripple").count() === 0; tick++)
+    await page.clock.runFor(128);
+  await expect(page.locator(".demo-ripple").first()).toBeAttached();
+  const positions = await page.evaluate(() => {
+    const ripple = document.querySelector<HTMLElement>(".demo-ripple")!;
+    const pointer = document.querySelector<HTMLElement>(".demo-pointer")!;
+    const before = ripple.getBoundingClientRect();
+    const scrollBefore = window.scrollY;
+    const documentY = before.top + scrollBefore;
+    pointer.style.transform = "translate3d(20px, 20px, 0)";
+    const afterPointer = ripple.getBoundingClientRect();
+    window.scrollTo({ top: scrollBefore + 120, behavior: "instant" });
+    window.dispatchEvent(new Event("scroll"));
+    const afterScroll = ripple.getBoundingClientRect();
+    return {
+      beforeX: before.left, beforeY: before.top,
+      pointerX: afterPointer.left, pointerY: afterPointer.top,
+      documentY, afterDocumentY: afterScroll.top + window.scrollY,
+      afterY: afterScroll.top, scrollDelta: window.scrollY - scrollBefore,
+      halo: getComputedStyle(pointer).boxShadow,
+      rippleColor: getComputedStyle(ripple.querySelector("i")!).borderTopColor,
+      pointerColor: getComputedStyle(pointer).backgroundColor,
+    };
+  });
+  expect(positions.pointerX).toBeCloseTo(positions.beforeX, 1);
+  expect(positions.pointerY).toBeCloseTo(positions.beforeY, 1);
+  expect(positions.scrollDelta).toBeGreaterThan(50);
+  expect(positions.afterDocumentY).toBeCloseTo(positions.documentY, 1);
+  expect(positions.afterY).toBeCloseTo(positions.beforeY - positions.scrollDelta, 1);
+  expect(positions.halo).toBe("none");
+  expect(positions.rippleColor).not.toBe(positions.pointerColor);
 });

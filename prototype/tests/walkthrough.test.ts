@@ -8,7 +8,7 @@ test("the five-viewer walkthrough respects eligibility and veto rules and ends w
   const limits = { ...defaultLimits(now), viewers: 5, audioLanguages: ["en", "hi", "ta"], subtitles: true };
   const candidates = DEMO_FILMS.map((movie, index) => assumeCandidate(movie, limits, index));
   assert.equal(DEMO_PARTY.length, 5);
-  assert.equal(WALKTHROUGH_DURATION, 120_000);
+  assert.equal(WALKTHROUGH_DURATION, 160_000);
   for (const candidate of candidates) assert.deepEqual(eligibility(candidate, limits, now), []);
   const ballots = DEMO_BALLOTS.map((responses) => {
     assert.equal(responses.length, candidates.length);

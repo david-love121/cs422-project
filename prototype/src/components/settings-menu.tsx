@@ -140,7 +140,7 @@ export default function SettingsMenu({
             onClick={() => { close(); onStartDemo(); }}
           >
             <Play size={17} aria-hidden="true" />
-            <span className="settings-copy">Start demo<small>2-minute walkthrough · 5 viewers</small></span>
+            <span className="settings-copy">Start demo<small>2:40 walkthrough · 5 viewers</small></span>
           </button>
         </div>
       )}

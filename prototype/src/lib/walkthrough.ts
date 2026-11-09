@@ -1,7 +1,7 @@
 import { DEMO_MOVIES } from "./demo";
 import { RESPONSE_OPTIONS, type Response } from "./veto";
 
-export const WALKTHROUGH_DURATION = 120_000;
+export const WALKTHROUGH_DURATION = 160_000;
 export const DEMO_PARTY = ["Maya", "Leo", "Priya", "Sam", "Alex"];
 export const DEMO_FILMS = [
   "Maharaja", "Glass Onion: A Knives Out Mystery", "The Adam Project",
@@ -42,24 +42,24 @@ export function walkthroughSteps(): Step[] {
     steps.push({ ...caption, kind, selector, weight, value });
   add("hold", undefined, 3000);
   add("select", target("viewer-count"), 1400, "5");
-  DEMO_PARTY.forEach((name, index) => add("type", `[data-demo-viewer="${index}"]`, 1400, name));
+  DEMO_PARTY.forEach((name, index) => add("type", `[data-demo-viewer="${index}"]`, 1800, name));
   caption = { chapter: 0, title: "Make room for everyone.", detail: "English, Hindi, Tamil, and required subtitles. Access needs never spend a veto." };
   add("click", '[data-demo-language="hi"]', 1200);
   add("click", '[data-demo-language="ta"]', 1200);
-  add("click", target("subtitles"), 1600);
-  add("click", target("continue"), 1500);
+  add("click", target("subtitles"), 2000);
+  add("click", target("continue"), 2000);
   DEMO_FILMS.forEach((movie, index) => {
     caption = { chapter: 1, title: `${DEMO_PARTY[index]} brings a suggestion.`, detail: `${movie.title}. Each person gets the same chance to contribute.` };
-    add("type", target("search"), 2100, movie.title);
-    add("click", `[data-demo-movie="${movie.id}"]`, 2100);
+    add("type", target("search"), 2400, movie.title);
+    add("click", `[data-demo-movie="${movie.id}"]`, 3200);
   });
   caption = { chapter: 1, title: "Five suggestions. Equal say.", detail: "The same five movies go to every viewer, one private turn at a time." };
-  add("click", target("start-voting"), 1900);
+  add("click", target("start-voting"), 2500);
   DEMO_BALLOTS.forEach((ballot, viewer) => {
     caption = { chapter: 2, title: `${DEMO_PARTY[viewer]}’s private turn.`, detail: viewer === 0
       ? "Really Want, Okay, Prefer another, or Veto. Select first, then save."
       : "Responses stay covered between turns. Every viewer answers every movie." };
-    add("click", target("begin-turn"), 1700);
+    add("click", target("begin-turn"), 2200);
     ballot.forEach((response, movie) => {
       caption = {
         chapter: 2,
@@ -69,25 +69,25 @@ export function walkthroughSteps(): Step[] {
           : response === "veto" ? "A veto removes this movie."
             : RESPONSE_OPTIONS.find((option) => option.value === response)!.label}`,
       };
-      if (viewer === 0 && movie === 0) add("click", '[data-demo-response="okay"]', 750);
-      add("click", `[data-demo-response="${response}"]`, 850);
-      add("click", target("save-response"), 950);
+      if (viewer === 0 && movie === 0) add("click", '[data-demo-response="okay"]', 900);
+      add("click", `[data-demo-response="${response}"]`, viewer === 0 ? 1500 : 950);
+      add("click", target("save-response"), 1000);
     });
     caption = { chapter: 2, title: `${DEMO_PARTY[viewer]} reviews, then hands over.`, detail: "Saved responses can be corrected before submitting the complete ballot." };
-    add("look", ".v-review-row", 1200);
-    add("click", target("finish-turn"), 1400);
+    add("look", ".v-review-row", 2800);
+    add("click", target("finish-turn"), 1700);
   });
   caption = { chapter: 3, title: "Five voices. A clear result.", detail: "All five ballots count. Enthusiasm never overrides a firm veto." };
-  add("click", target("show-results"), 2000);
-  add("look", `[data-demo-result="${DEMO_FILMS[1].id}"]`, 2800);
+  add("click", target("show-results"), 2500);
+  add("look", `[data-demo-result="${DEMO_FILMS[1].id}"]`, 4500);
   caption = { chapter: 3, title: "A veto means no.", detail: "The Tomorrow War and Jaane Jaan are out. The other three movies survive." };
-  add("look", `[data-demo-result="${DEMO_FILMS[3].id}"]`, 2500);
-  add("look", `[data-demo-result="${DEMO_FILMS[4].id}"]`, 2500);
+  add("look", `[data-demo-result="${DEMO_FILMS[3].id}"]`, 3500);
+  add("look", `[data-demo-result="${DEMO_FILMS[4].id}"]`, 3500);
   caption = { chapter: 4, title: "Keep every survivor.", detail: "Save three good options. Nobody has to force a single winner." };
-  DEMO_SURVIVORS.forEach((movie) => add("click", `[data-demo-save="${movie.id}"]`, 1900));
+  DEMO_SURVIVORS.forEach((movie) => add("click", `[data-demo-save="${movie.id}"]`, 2300));
   add("click", target("view-shortlist"), 1800);
   caption = { chapter: 4, title: "Five friends. Three movies to look forward to.", detail: "Everyone contributed. Real objections were respected. The good options stay together." };
-  add("look", ".movie-grid", 6500);
+  add("look", ".movie-grid", 8000);
   return steps;
 }
 

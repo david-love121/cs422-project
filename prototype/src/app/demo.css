@@ -23,14 +23,12 @@
   border-radius: 50%;
   background: var(--accent);
   border: 2px solid var(--paper);
-  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent);
   transition: transform .32s cubic-bezier(.22,.68,.25,1);
   pointer-events: none;
 }
 
 .demo-ripple {
-  position: fixed;
-  z-index: 109;
+  position: absolute;
   pointer-events: none;
 }
 
@@ -40,8 +38,8 @@
   top: -14px;
   width: 28px;
   height: 28px;
-  border: 2px solid var(--accent);
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border: 2px solid var(--ripple-color);
+  background: color-mix(in srgb, var(--ripple-color) 18%, transparent);
   border-radius: 50%;
   animation: demo-ripple .85s ease-out both;
 }
@@ -256,4 +254,21 @@
     animation: none;
     opacity: .25;
   }
+}
+.demo-ripples {
+  --ripple-color: #c47a19;
+  position: fixed;
+  inset: 0;
+  z-index: 109;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+:root[data-theme="dark"] .demo-ripples {
+  --ripple-color: #f5bd64;
+}
+
+.demo-ripple-plane {
+  position: absolute;
+  inset: 0;
 }

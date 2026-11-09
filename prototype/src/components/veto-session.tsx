@@ -65,12 +65,6 @@ function CandidateInfo({ candidate }: { candidate: Candidate }) {
       <span>{candidate.movie.runtime} min</span>
       <span>{serviceName(candidate.source)}</span>
       <span>{languageName(candidate.audio)} audio</span>
-      <span>
-        {candidate.subtitles
-          ? "English subtitles assumed"
-          : "Subtitles not required"}
-      </span>
-      <span>Prototype access assumptions</span>
     </div>
   );
 }
@@ -663,10 +657,7 @@ export default function VetoSession({
                         idea, review the limits, or stop for tonight.
                       </p>
                     )}
-                    <p className="v-hint">
-                      {catalogNote && <>{catalogNote} </>}
-                      Prototype assumes agreed streaming, audio and subtitle access.
-                    </p>
+                    {catalogNote && <p className="v-hint">{catalogNote}</p>}
                     {suggestionError && <p className="v-error" role="alert">{suggestionError}</p>}
                   </>
                 )}

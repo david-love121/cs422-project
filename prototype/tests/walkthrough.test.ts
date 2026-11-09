@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DEMO_BALLOTS, DEMO_FILMS, DEMO_PARTY, DEMO_SURVIVORS, WALKTHROUGH_DURATION } from "../src/lib/walkthrough";
+import { DEMO_BALLOTS, DEMO_FILMS, DEMO_PARTY, DEMO_SURVIVORS, WALKTHROUGH_DURATION, walkthroughSteps } from "../src/lib/walkthrough";
 import { assumeCandidate, defaultLimits, eligibility, tally } from "../src/lib/veto";
 
 test("the five-viewer walkthrough respects eligibility and veto rules and ends with three real survivors", () => {
@@ -19,4 +19,14 @@ test("the five-viewer walkthrough respects eligibility and veto rules and ends w
   assert.deepEqual(results.filter((result) => !result.eliminated).map((result) => result.candidate.movie.id).sort(), DEMO_SURVIVORS.map((movie) => movie.id).sort());
   for (const result of results) assert.equal(Object.values(result.counts).reduce((sum, count) => sum + count, 0), 5);
   assert.equal(results[1].counts.want, 3);
+});
+
+
+test("the 2:15 presentation shows one complete turn and devotes 70 seconds to results and the shortlist", () => {
+  const steps = walkthroughSteps();
+  const weights = [0, 1, 2, 3, 4].map((chapter) => steps.filter((step) => step.chapter === chapter).reduce((total, step) => total + step.weight, 0));
+  assert.deepEqual(weights, [14_000, 26_000, 25_000, 40_000, 30_000]);
+  assert.equal(weights.reduce((total, value) => total + value, 0), WALKTHROUGH_DURATION);
+  assert.equal(steps.filter((step) => step.kind === "skip-votes").length, 1);
+  assert.equal(steps.filter((step) => step.selector === '[data-demo="begin-turn"]').length, 1);
 });

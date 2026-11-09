@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Pause, Play, RotateCcw, X } from "lucide-react";
 import {
-  DEMO_CHAPTERS, WALKTHROUGH_DURATION, runWalkthrough,
-  type DemoCaption, type DemoPoint,
+  DEMO_CHAPTERS, DEMO_PARTY, WALKTHROUGH_DURATION, runWalkthrough,
+  type DemoCaption, type DemoPoint, type DemoTransition,
 } from "@/lib/walkthrough";
 import "@/app/demo.css";
 
@@ -29,6 +29,7 @@ export default function DemoWalkthrough({ onExit, onReplay }: { onExit: () => vo
   const [elapsed, setElapsed] = useState(0);
   const [caption, setCaption] = useState<DemoCaption>({ chapter: 0, title: "Five friends. One movie night.", detail: "Start with the people, the time, and what everyone needs." });
   const [pointer, setPointer] = useState<DemoPoint | null>(null);
+  const [transition, setTransition] = useState<DemoTransition | null>(null);
   const [ripples, setRipples] = useState<Ripple[]>([]);
   const rippleId = useRef(0);
   const ripplePlane = useRef<HTMLDivElement>(null);
@@ -59,10 +60,14 @@ export default function DemoWalkthrough({ onExit, onReplay }: { onExit: () => vo
         setRipples((current) => [...current, pulse]);
       },
       onProgress: setElapsed,
+      onTransition: (next) => {
+        setTransition(next);
+        if (next) { setPointer(null); setRipples([]); }
+      },
     }).then(() => {
       if (!controller.signal.aborted) { setStatus("complete"); setPointer(null); }
     }).catch(() => {
-      if (!controller.signal.aborted) { setStatus("error"); setPointer(null); }
+      if (!controller.signal.aborted) { setStatus("error"); setPointer(null); setTransition(null); }
     });
     return () => controller.abort();
   }, []);
@@ -77,6 +82,17 @@ export default function DemoWalkthrough({ onExit, onReplay }: { onExit: () => vo
 
   return (
     <>
+      {transition && <div className={`demo-skip ${transition.leaving ? "is-leaving" : ""}`} role="region" aria-label="Voting transition">
+        <div className="demo-skip-copy">
+          <p className="demo-eyebrow">Skipping repeated votes</p>
+          <h2>Everyone gets their say.</h2>
+          <p>Leo, Priya, Sam, and Alex take the same private voting steps.<br />We’re moving ahead to the group’s results.</p>
+          <div className="demo-skip-viewers" aria-hidden="true">
+            {DEMO_PARTY.map((name, index) => <span key={name} className={index < transition.completed ? "is-complete" : ""}>{index < transition.completed ? <Check size={18} /> : name[0]}</span>)}
+          </div>
+          <p className="demo-skip-count">{transition.completed} of 5 ballots complete</p>
+        </div>
+      </div>}
       {pointer && <div className="demo-pointer" aria-hidden="true" style={{ transform: `translate3d(${pointer.x}px, ${pointer.y}px, 0)` }} />}
       <div className="demo-ripples" aria-hidden="true">
         <div className="demo-ripple-plane" ref={ripplePlane}>

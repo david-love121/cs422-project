@@ -296,8 +296,8 @@ test("a saved film with unknown metadata is nominated immediately using prototyp
   await expect(added).toContainText("120 min");
   await expect(added).toContainText("Netflix");
   await expect(added).toContainText("English audio");
-  await expect(added).toContainText("English subtitles assumed");
-  await expect(added).toContainText("Prototype access assumptions");
+  await expect(page.getByText("English subtitles assumed", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Prototype access assumptions", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Sam, add your suggestion." })).toBeFocused();
 });
 

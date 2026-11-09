@@ -9,6 +9,8 @@ import {
 } from "../demo";
 import {
   buildDiscoverUrl,
+  type Catalog,
+  type CatalogMode,
   type Filters,
   type Genre,
   type Language,
@@ -17,13 +19,6 @@ import {
   type Provider,
 } from "../tmdb";
 import { ApiError, CACHE_SECONDS, movieCacheSeconds } from "./query";
-
-export type Catalog = {
-  mode: "live" | "demo";
-  genres: Genre[];
-  languages: Language[];
-  providers: Provider[];
-};
 
 type JsonObject = Record<string, unknown>;
 type Fetcher = typeof fetch;
@@ -95,12 +90,16 @@ function movie(value: unknown, details = false): Movie {
   return result;
 }
 
+function normalizeCredential(token?: string): string {
+  return token?.trim().replace(/^Bearer(?:\s+|$)/i, "").trim() ?? "";
+}
+
 /** Injectable fetch makes the credential boundary and cache behavior testable without a real token. */
 export function createMovieService({
   token,
   fetcher = fetch,
 }: { token?: string; fetcher?: Fetcher } = {}) {
-  const credential = token?.trim().replace(/^Bearer\s+/i, "") ?? "";
+  const credential = normalizeCredential(token);
   const mode = credential ? "live" : "demo";
 
   async function request(endpoint: string, seconds: number): Promise<unknown> {
@@ -261,6 +260,12 @@ export function createMovieService({
   };
 }
 
-export function movieService() {
-  return createMovieService({ token: process.env.TMDB_API_TOKEN });
+export function movieService(mode?: CatalogMode) {
+  const token = mode === "demo" ? "" : process.env.TMDB_API_TOKEN;
+  if (mode === "live" && !normalizeCredential(token))
+    throw new ApiError(
+      "The live catalog is unavailable. Use the sample collection or contact the site owner.",
+      503,
+    );
+  return createMovieService({ token });
 }

@@ -1,3 +1,5 @@
+import { RUNTIME_RANGES, RATING_VALUES, YEAR_VALUES } from "./catalog";
+
 export type Genre = { id: number; name: string };
 export type Language = {
   iso_639_1: string;
@@ -24,6 +26,13 @@ export type Movie = {
   original_language: string;
   runtime?: number;
   provider_ids?: number[];
+};
+export type CatalogMode = "demo" | "live";
+export type Catalog = {
+  mode: CatalogMode;
+  genres: Genre[];
+  languages: Language[];
+  providers: Provider[];
 };
 export type Filters = {
   genres: number[];
@@ -52,12 +61,6 @@ export const DEFAULT_FILTERS: Filters = {
   providers: [],
 };
 const API_BASE = "https://api.themoviedb.org/3";
-const RUNTIMES: Record<string, [number, number?]> = {
-  short: [1, 90],
-  medium: [91, 120],
-  long: [121, 180],
-  epic: [181],
-};
 export const MOVIE_SORTS = [
   "popularity.desc",
   "popularity.asc",
@@ -78,15 +81,15 @@ export function filterBounds(filters: Filters) {
   let fromDate: string | undefined;
   let toDate = today;
   if (filters.year === "classic") toDate = "1989-12-31";
-  else if (["2020", "2010", "2000", "1990"].includes(filters.year)) {
+  else if (YEAR_VALUES.some((year) => year === filters.year && /^\d{4}$/.test(year))) {
     fromDate = `${filters.year}-01-01`;
     toDate = [`${Number(filters.year) + 9}-12-31`, today].sort()[0];
   }
   return {
     fromDate,
     toDate,
-    runtime: RUNTIMES[filters.runtime],
-    rating: ["6", "7", "8"].includes(filters.rating)
+    runtime: RUNTIME_RANGES[filters.runtime],
+    rating: RATING_VALUES.some((rating) => rating === filters.rating && rating !== "")
       ? Number(filters.rating)
       : 0,
     sort: SORTS.has(filters.sort) ? filters.sort : DEFAULT_FILTERS.sort,

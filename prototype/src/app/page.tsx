@@ -1,8 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import VetoSession from "@/components/veto-session";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Modal } from "@/components/dialog";
+import MoviePoster from "@/components/movie-poster";
+import SettingsMenu from "@/components/settings-menu";
+import { parseSavedMovies } from "@/lib/movie";
+import { CATALOG_SNAPSHOT_DATE } from "@/lib/demo";
+import {
+  MAX_FILTER_IDS,
+  RUNTIME_OPTIONS,
+  YEAR_OPTIONS,
+  RATING_OPTIONS,
+} from "@/lib/catalog";
 import {
   ArrowRight,
   Bookmark,
@@ -23,6 +33,7 @@ import {
 import {
   DEFAULT_FILTERS,
   imageUrl,
+  type Catalog,
   type Filters,
   type Genre,
   type Language,
@@ -33,101 +44,12 @@ import {
   fetchCatalog,
   fetchMovies,
   fetchMovieDetails,
-  type Catalog,
 } from "@/lib/tmdb-client";
 
 const SAVED_KEY = "movie-night-shortlist-v1";
-const RUNTIME_OPTIONS = [
-  ["", "Any length"],
-  ["short", "90 minutes or less"],
-  ["medium", "91–120 minutes"],
-  ["long", "121–180 minutes"],
-  ["epic", "Over 3 hours"],
-];
-const YEAR_OPTIONS = [
-  ["", "Any decade"],
-  ["2020", "2020s"],
-  ["2010", "2010s"],
-  ["2000", "2000s"],
-  ["1990", "1990s"],
-  ["classic", "Before 1990"],
-];
+const PREFERENCES_KEY = "veto-preferences-v1";
 const GENRE_ORDER = [35, 18, 28, 12, 878, 10749, 53, 16, 27, 14, 10751, 80];
 const PROVIDER_ORDER = [8, 9, 337, 1899, 15, 350, 531, 386];
-
-function Modal({
-  title,
-  children,
-  onClose,
-  className = "",
-}: {
-  title: string;
-  children: ReactNode;
-  onClose: () => void;
-  className?: string;
-}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const dialog = ref.current;
-    dialog?.showModal();
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      dialog?.close();
-      document.body.style.overflow = overflow;
-    };
-  }, []);
-  return (
-    <dialog
-      ref={ref}
-      aria-label={title}
-      className={`modal ${className}`}
-      onCancel={onClose}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div className="modal-inner">
-        <button
-          className="icon-button modal-close"
-          onClick={onClose}
-          aria-label={`Close ${title}`}
-        >
-          <X size={20} />
-        </button>
-        {children}
-      </div>
-    </dialog>
-  );
-}
-
-function Poster({
-  movie,
-  className = "",
-}: {
-  movie: Movie;
-  className?: string;
-}) {
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const src = imageUrl(movie.poster_path);
-  return (
-    <div className={`poster ${className}`}>
-      {src && failedSrc !== src ? (
-        <img
-          src={src}
-          alt={`${movie.title} poster`}
-          loading="lazy"
-          onError={() => setFailedSrc(src)}
-        />
-      ) : (
-        <div className="poster-fallback">
-          <Film size={34} />
-          <span>{movie.title}</span>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function FilterPanel({
   filters,
@@ -169,6 +91,8 @@ function FilterPanel({
       )
     : orderedProviders.slice(0, 6);
   function toggleGenre(id: number) {
+    if (!filters.genres.includes(id) && filters.genres.length >= MAX_FILTER_IDS)
+      return;
     onChange({
       ...filters,
       genres: filters.genres.includes(id)
@@ -177,6 +101,11 @@ function FilterPanel({
     });
   }
   function toggleProvider(id: number) {
+    if (
+      !filters.providers.includes(id) &&
+      filters.providers.length >= MAX_FILTER_IDS
+    )
+      return;
     onChange({
       ...filters,
       providers: filters.providers.includes(id)
@@ -210,6 +139,10 @@ function FilterPanel({
                 key={genre.id}
                 className={`genre-chip ${filters.genres.includes(genre.id) ? "selected" : ""}`}
                 aria-pressed={filters.genres.includes(genre.id)}
+                disabled={
+                  !filters.genres.includes(genre.id) &&
+                  filters.genres.length >= MAX_FILTER_IDS
+                }
                 onClick={() => toggleGenre(genre.id)}
               >
                 {filters.genres.includes(genre.id) && <Check size={12} />}
@@ -225,6 +158,12 @@ function FilterPanel({
           {allGenres ? "Fewer genres" : "All genres"}
           <ChevronDown size={14} className={allGenres ? "flipped" : ""} />
         </button>
+        {filters.genres.length >= MAX_FILTER_IDS && (
+          <p className="field-hint" role="status">
+            Up to {MAX_FILTER_IDS} genres can be selected. Remove one to choose
+            another.
+          </p>
+        )}
         {filters.genres.length > 1 && (
           <label className="check-label">
             <input
@@ -305,10 +244,11 @@ function FilterPanel({
                 onChange({ ...filters, rating: event.target.value })
               }
             >
-              <option value="">Any rating</option>
-              <option value="6">6+ / 10</option>
-              <option value="7">7+ / 10</option>
-              <option value="8">8+ / 10</option>
+              {RATING_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
             </select>
           </label>
         </div>
@@ -339,6 +279,10 @@ function FilterPanel({
               className={`provider-button ${filters.providers.includes(provider.provider_id) ? "selected" : ""}`}
               key={provider.provider_id}
               aria-pressed={filters.providers.includes(provider.provider_id)}
+              disabled={
+                !filters.providers.includes(provider.provider_id) &&
+                filters.providers.length >= MAX_FILTER_IDS
+              }
               onClick={() => toggleProvider(provider.provider_id)}
             >
               <span
@@ -365,6 +309,12 @@ function FilterPanel({
             </button>
           ))}
         </div>
+        {filters.providers.length >= MAX_FILTER_IDS && (
+          <p className="field-hint" role="status">
+            Up to {MAX_FILTER_IDS} streaming services can be selected. Remove one
+            to choose another.
+          </p>
+        )}
         {allProviders && visibleProviders.length === 0 && (
           <p className="field-hint">No services match that name.</p>
         )}
@@ -398,10 +348,14 @@ function FilterPanel({
 }
 
 export default function Home() {
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [dataMode, setDataMode] = useState<"demo" | "live">("demo");
+  const [preferencesReady, setPreferencesReady] = useState(false);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [catalogError, setCatalogError] = useState("");
   const [catalogRetry, setCatalogRetry] = useState(0);
+  const [catalogStarted, setCatalogStarted] = useState(false);
   const genres = catalog?.genres ?? [];
   const languages = catalog?.languages ?? [];
   const providers = catalog?.providers ?? [];
@@ -430,6 +384,43 @@ export default function Home() {
     error: string;
   }>({ movie: null, loading: false, error: "" });
   const resultsRef = useRef<HTMLElement>(null);
+  const catalogRequest = useRef<AbortController | null>(null);
+  const moviesRequest = useRef<AbortController | null>(null);
+  const detailRequest = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const stored: unknown = JSON.parse(localStorage.getItem(PREFERENCES_KEY) || "null");
+        if (stored && typeof stored === "object") {
+          if ("theme" in stored && (stored.theme === "light" || stored.theme === "dark"))
+            setTheme(stored.theme);
+          if ("dataMode" in stored && stored.dataMode === "live") {
+            setDataMode("live");
+            setCatalogStarted(true);
+          }
+        }
+      } catch {
+        /* Defaults work when this browser cannot restore settings. */
+      }
+      setPreferencesReady(true);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+  }, [theme]);
+
+  useEffect(() => {
+    if (!preferencesReady) return;
+    try {
+      localStorage.setItem(PREFERENCES_KEY, JSON.stringify({ theme, dataMode }));
+    } catch {
+      /* Settings still apply for this visit. */
+    }
+  }, [theme, dataMode, preferencesReady]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -437,19 +428,7 @@ export default function Home() {
         const stored: unknown = JSON.parse(
           localStorage.getItem(SAVED_KEY) || "[]",
         );
-        if (Array.isArray(stored))
-          setSaved(
-            stored
-              .filter(
-                (movie): movie is Movie =>
-                  typeof movie === "object" &&
-                  movie !== null &&
-                  typeof movie.id === "number" &&
-                  typeof movie.title === "string" &&
-                  Array.isArray(movie.genre_ids),
-              )
-              .slice(0, 100),
-          );
+        setSaved(parseSavedMovies(stored));
       } catch {
         setStorageNote(
           "Your shortlist will stay available until you close this page.",
@@ -467,16 +446,22 @@ export default function Home() {
 
   useEffect(() => {
     if (!storageReady) return;
+    let note = "";
     try {
       localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
     } catch {
-      /* In-memory shortlist still works. */
+      note =
+        "Changes to your shortlist couldn’t be saved on this device. Keep this page open; reloading may lose them.";
     }
+    const timer = setTimeout(() => setStorageNote(note), 0);
+    return () => clearTimeout(timer);
   }, [saved, storageReady]);
 
   useEffect(() => {
+    if (!catalogStarted) return;
     const controller = new AbortController();
-    fetchCatalog(controller.signal)
+    catalogRequest.current = controller;
+    fetchCatalog(controller.signal, dataMode)
       .then((data) => {
         if (!controller.signal.aborted) setCatalog(data);
       })
@@ -489,15 +474,16 @@ export default function Home() {
           );
       });
     return () => controller.abort();
-  }, [catalogRetry]);
+  }, [catalogStarted, catalogRetry, dataMode]);
 
   useEffect(() => {
     if (!catalog) return;
     const controller = new AbortController();
+    moviesRequest.current = controller;
     const timer = setTimeout(async () => {
       setLive((previous) => ({ ...previous, loading: true, error: "" }));
       try {
-        const response = await fetchMovies(filters, page, controller.signal);
+        const response = await fetchMovies(filters, page, controller.signal, dataMode);
         if (!controller.signal.aborted)
           setLive({
             movies: response.results,
@@ -524,12 +510,13 @@ export default function Home() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [catalog, filters, page, retry]);
+  }, [catalog, filters, page, retry, dataMode]);
 
   useEffect(() => {
     if (!selectedMovie) return;
     const controller = new AbortController();
-    fetchMovieDetails(selectedMovie.id, controller.signal)
+    detailRequest.current = controller;
+    fetchMovieDetails(selectedMovie.id, controller.signal, dataMode)
       .then((movie) => {
         if (!controller.signal.aborted)
           setDetail({ movie, loading: false, error: "" });
@@ -544,7 +531,7 @@ export default function Home() {
           });
       });
     return () => controller.abort();
-  }, [selectedMovie]);
+  }, [selectedMovie, dataMode]);
 
   const movies = view === "shortlist" ? saved : live.movies;
   const total = view === "shortlist" ? saved.length : live.total;
@@ -578,7 +565,22 @@ export default function Home() {
     setDetail({ movie: null, loading: true, error: "" });
   }
   function switchView(nextView: "session" | "explore" | "shortlist") {
+    if (nextView === "explore") setCatalogStarted(true);
     setView(nextView);
+  }
+  function changeDataMode(mode: "demo" | "live") {
+    if (mode === dataMode) return;
+    catalogRequest.current?.abort();
+    moviesRequest.current?.abort();
+    detailRequest.current?.abort();
+    setDataMode(mode);
+    if (mode === "live") setCatalogStarted(true);
+    setCatalog(null);
+    setCatalogError("");
+    setPage(1);
+    setLive({ movies: [], total: 0, pages: 0, loading: true, error: "" });
+    setSelectedMovie(null);
+    setDetail({ movie: null, loading: false, error: "" });
   }
   function retryCollection() {
     if (!catalog) {
@@ -607,19 +609,12 @@ export default function Home() {
       </a>
       <header className="site-header">
         <div className="header-inner">
-          <Link href="/" className="brand" aria-label="Veto home">
-            <span className="brand-mark" aria-hidden="true">
-              <svg viewBox="0 0 32 32" width="25" height="25" fill="none">
-                <path
-                  d="m7 9 9 16L26 7"
-                  stroke="currentColor"
-                  strokeWidth="3.5"
-                  strokeLinecap="square"
-                />
-              </svg>
-            </span>
-            <span>veto</span>
-          </Link>
+          <SettingsMenu
+            theme={theme}
+            dataMode={dataMode}
+            onThemeChange={setTheme}
+            onDataModeChange={changeDataMode}
+          />
           <nav className="main-nav" aria-label="Main navigation">
             <button
               className={view === "session" ? "active" : ""}
@@ -654,9 +649,11 @@ export default function Home() {
                   ? isLive
                     ? "Live collection"
                     : "Sample collection"
-                  : catalogError
-                    ? "Collection unavailable"
-                    : "Loading collection…"}
+                  : view === "shortlist"
+                    ? "Saved on this device"
+                    : catalogError
+                      ? "Collection unavailable"
+                      : "Loading collection…"}
               </span>
             </div>
           )}
@@ -665,7 +662,15 @@ export default function Home() {
 
       <main id="main-content" className="page-shell">
         {view === "session" ? (
-          <VetoSession saved={saved} onExplore={() => switchView("explore")} />
+          <VetoSession
+            saved={saved}
+            onExplore={() => switchView("explore")}
+            catalogMovies={dataMode === "live" ? live.movies : undefined}
+            catalogNote={dataMode === "live"
+              ? catalogError || live.error || (!catalog || live.loading
+                ? "Loading live movies…" : "Live movie collection.")
+              : undefined}
+          />
         ) : (
           <>
             <section className="hero" aria-labelledby="hero-title">
@@ -695,15 +700,21 @@ export default function Home() {
                 <Globe2 size={17} />
               </span>
               <p>
-                {isLive ? (
+                {view === "shortlist" ? (
+                  <>
+                    <strong>Saved ideas.</strong> Available on this device for
+                    your group’s nominations.
+                  </>
+                ) : isLive ? (
                   <>
                     <strong>You’re exploring TMDB.</strong> Live movies and
                     streaming services for your group.
                   </>
                 ) : isDemo ? (
                   <>
-                    <strong>Sample collection.</strong> Explore prepared movie
-                    records for your group.
+                    <strong>Sample collection.</strong> Movie metadata and US
+                    streaming listings from {CATALOG_SNAPSHOT_DATE}. Recheck
+                    current playback access before nominating.
                   </>
                 ) : (
                   <strong>
@@ -900,11 +911,11 @@ export default function Home() {
                   view === "explore" && (
                     <p className="sample-availability">
                       <Tv size={14} />
-                      Sample service assignments only. Check current access
-                      in your streaming service before nominating a movie.
+                      Streaming listings snapshot from {CATALOG_SNAPSHOT_DATE}.
+                      Recheck current access in your streaming service.
                     </p>
                   )}
-                {storageNote && <p className="field-hint">{storageNote}</p>}
+                {storageNote && <p className="field-hint" role="status">{storageNote}</p>}
                 <div className="sr-only" aria-live="polite">
                   {loading
                     ? "Loading movies"
@@ -986,7 +997,7 @@ export default function Home() {
                               aria-label={`View details for ${movie.title}`}
                               onClick={() => openMovie(movie)}
                             >
-                              <Poster movie={movie} />
+                              <MoviePoster movie={movie} />
                               <span className="poster-hover">
                                 View details <ArrowRight size={15} />
                               </span>
@@ -1090,17 +1101,17 @@ export default function Home() {
                       </button>
                     </div>
                   )}
-                {isDemo && view === "explore" && movies.length > 0 && (
-                  <div className="collection-end">
-                    <span />
-                    <Film size={18} />
-                    <span />
-                    <p>
-                      End of the sample collection.
-
-                    </p>
-                  </div>
-                )}
+                {isDemo &&
+                  view === "explore" &&
+                  page >= live.pages &&
+                  movies.length > 0 && (
+                    <div className="collection-end">
+                      <span />
+                      <Film size={18} />
+                      <span />
+                      <p>End of the sample collection.</p>
+                    </div>
+                  )}
               </section>
             </div>
           </>
@@ -1146,7 +1157,7 @@ export default function Home() {
             . US catalog.{" "}
             {isLive
               ? "Availability can change."
-              : "Sample movies and service assignments are for demonstration."}
+              : `Prepared metadata and streaming listings from ${CATALOG_SNAPSHOT_DATE}; recheck current access.`}
           </p>
         </div>
       </footer>
@@ -1178,7 +1189,7 @@ export default function Home() {
           className="details-modal"
         >
           <div className="detail-layout">
-            <Poster movie={detailMovie} />
+            <MoviePoster movie={detailMovie} />
             <div className="detail-copy">
               <div className="eyebrow small">MOVIE DETAILS</div>
               <h2 className="modal-title">{detailMovie.title}</h2>
@@ -1247,7 +1258,7 @@ export default function Home() {
               </a>
               <p className="field-hint">
                 Watch options via TMDB and JustWatch.
-                {isDemo && " This is a sample movie record."}
+                {isDemo && ` Prepared metadata from ${CATALOG_SNAPSHOT_DATE}; recheck current access.`}
               </p>
             </div>
           </div>

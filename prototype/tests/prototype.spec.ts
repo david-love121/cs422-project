@@ -6,7 +6,8 @@ import {
   DEMO_PROVIDERS,
   filterDemoMovies,
 } from "../src/lib/demo";
-import { DEFAULT_FILTERS, type Filters } from "../src/lib/tmdb";
+import { DEFAULT_FILTERS, type Filters, type Provider } from "../src/lib/tmdb";
+import { MAX_FILTER_IDS } from "../src/lib/catalog";
 
 async function openFilters(page: Page, mobile: boolean) {
   if (mobile) await page.getByRole("button", { name: /^Filters/ }).click();
@@ -73,6 +74,7 @@ type FixtureOptions = {
   empty?: boolean;
   catalogFailures?: number;
   discoveryFailures?: number;
+  providers?: Provider[];
 };
 
 async function mockServer(page: Page, options: FixtureOptions = {}) {
@@ -97,7 +99,7 @@ async function mockServer(page: Page, options: FixtureOptions = {}) {
           mode,
           genres: DEMO_GENRES,
           languages: DEMO_LANGUAGES,
-          providers: DEMO_PROVIDERS,
+          providers: options.providers ?? DEMO_PROVIDERS,
         };
       }
     } else if (url.pathname === "/api/movies") {
@@ -364,7 +366,7 @@ test("empty results and resetting unchanged filters remain usable", async ({
   await expect(page.locator("#movies")).toHaveAttribute("aria-busy", "false");
 });
 
-test("a saved server movie can be nominated in Veto after its access check", async ({ page }) => {
+test("a saved server movie joins the round directly with its known runtime", async ({ page }) => {
   await mockServer(page);
   await page.goto("/");
   await page.getByRole("button", { name: "Explore", exact: true }).click();
@@ -375,17 +377,15 @@ test("a saved server movie can be nominated in Veto after its access check", asy
   await details.getByRole("button", { name: "Close Server Test Movie", exact: true }).click();
   await page.getByRole("button", { name: "Decide together", exact: true }).first().click();
   await page.getByLabel("Number of viewers").selectOption("2");
+  await page.getByLabel("Viewer 2 name").fill("Sam");
   await page.getByRole("button", { name: "Continue to suggestions", exact: true }).click();
   await page.getByRole("searchbox", { name: "Find a movie", exact: true }).fill(movie.title);
   await page.getByRole("button", { name: /^Server Test Movie 2024/ }).click();
-  const access = page.getByRole("dialog", { name: movie.title, exact: true });
-  await expect(access.getByLabel("Runtime in minutes")).toHaveValue("85");
-  const add = access.getByRole("button", { name: "Add my suggestion", exact: true });
-  await expect(add).toBeDisabled();
-  await access.getByLabel("I checked playback access and audio on this service, including subtitle needs. There is no extra charge.").check();
-  await add.click();
-  await expect(access).toHaveCount(0);
-  await expect(page.locator(".v-shortlist-item").filter({ hasText: movie.title })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const candidate = page.locator(".v-shortlist-item").filter({ hasText: movie.title });
+  await expect(candidate).toBeVisible();
+  await expect(candidate).toContainText("85 min");
+  await expect(page.getByRole("heading", { name: "Sam, add your suggestion.", exact: true })).toBeVisible();
 });
 
 test("retiring a browser token preserves the existing shortlist and sends no credential", async ({ page }) => {
@@ -398,4 +398,108 @@ test("retiring a browser token preserves the existing shortlist and sends no cre
   await page.getByRole("button", { name: "Shortlist", exact: true }).click();
   await expect(page.getByRole("button", { name: `View details for ${movie.title}`, exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem("movie-night-tmdb-token"))).toBeNull();
+});
+
+test("catalog requests begin on Explore and remain loaded across workspace navigation", async ({ page }) => {
+  const calls = await mockServer(page);
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Who’s watching?", exact: true })).toBeVisible();
+  expect(calls.catalog).toBe(0);
+  expect(calls.discovery).toHaveLength(0);
+  await page.getByRole("button", { name: "Shortlist", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Your shortlist.", exact: true })).toBeVisible();
+  expect(calls.catalog).toBe(0);
+  await page.getByRole("button", { name: "Explore", exact: true }).click();
+  await expect(page.getByRole("button", { name: `View details for ${movie.title}`, exact: true })).toBeVisible();
+  expect(calls.catalog).toBe(1);
+  const discoveries = calls.discovery.length;
+  await page.getByRole("button", { name: "Decide together", exact: true }).first().click();
+  await expect(page.getByRole("heading", { name: "Who’s watching?", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Explore", exact: true }).click();
+  await expect(page.getByRole("button", { name: `View details for ${movie.title}`, exact: true })).toBeVisible();
+  expect(calls.catalog).toBe(1);
+  expect(calls.discovery).toHaveLength(discoveries);
+});
+
+test("saving a 101st movie keeps all saved titles after reload", async ({ page }) => {
+  await mockServer(page);
+  await page.addInitScript((fixture) => {
+    if (sessionStorage.getItem("seeded-large-shortlist")) return;
+    const saved = Array.from({ length: 100 }, (_, index) => ({
+      ...fixture, id: 800000 + index, title: `Earlier saved movie ${index + 1}`,
+    }));
+    localStorage.setItem("movie-night-shortlist-v1", JSON.stringify(saved));
+    sessionStorage.setItem("seeded-large-shortlist", "yes");
+  }, movie);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Explore", exact: true }).click();
+  await page.getByRole("button", { name: `Save ${movie.title}`, exact: true }).click();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("movie-night-shortlist-v1") || "[]").length)).toBe(101);
+  await page.reload();
+  await page.getByRole("button", { name: "Shortlist", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^View details for / })).toHaveCount(101);
+  await expect(page.getByRole("button", { name: `View details for ${movie.title}`, exact: true })).toBeVisible();
+});
+
+test("partial legacy saved movies open safely even when detail lookup fails", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await mockServer(page);
+  await page.route(/\/api\/movies\/123(?:\?.*)?$/, (route) => route.fulfill({
+    status: 404, contentType: "application/json", body: JSON.stringify({ error: "This movie is no longer available." }),
+  }));
+  await page.addInitScript(() => localStorage.setItem("movie-night-shortlist-v1", JSON.stringify([
+    { id: 123, title: "Legacy saved movie", vote_average: "bad", genre_ids: null, poster_path: 99 },
+    { id: -1, title: "Invalid identity" }, null,
+  ])));
+  await page.goto("/");
+  await page.getByRole("button", { name: "Shortlist", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^View details for / })).toHaveCount(1);
+  await page.getByRole("button", { name: "View details for Legacy saved movie", exact: true }).click();
+  const details = page.getByRole("dialog", { name: "Legacy saved movie", exact: true });
+  await expect(details).toContainText("No synopsis available for this movie.");
+  await expect(details).toContainText("This movie is no longer available.");
+  await expect(details).toContainText("0.0");
+  expect(errors).toEqual([]);
+});
+
+test("failed shortlist writes keep the current idea usable and explain the persistence limit", async ({ page }) => {
+  await mockServer(page);
+  await page.addInitScript(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (this === localStorage && key === "movie-night-shortlist-v1")
+        throw new DOMException("Storage full", "QuotaExceededError");
+      original.call(this, key, value);
+    };
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Explore", exact: true }).click();
+  await page.getByRole("button", { name: `Save ${movie.title}`, exact: true }).click();
+  await page.getByRole("button", { name: "Shortlist", exact: true }).click();
+  await expect(page.getByRole("button", { name: `View details for ${movie.title}`, exact: true })).toBeVisible();
+  await expect(page.getByText("Changes to your shortlist couldn’t be saved on this device. Keep this page open; reloading may lose them.", { exact: true })).toBeVisible();
+});
+
+test("streaming selection stops at the server limit and permits replacing a selected service", async ({ page, isMobile }) => {
+  const providers = Array.from({ length: MAX_FILTER_IDS + 1 }, (_, index) => ({
+    provider_id: 1000 + index, provider_name: `Test service ${index + 1}`, logo_path: null,
+  }));
+  const calls = await mockServer(page, { providers });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Explore", exact: true }).click();
+  await expect(page.getByRole("button", { name: `View details for ${movie.title}`, exact: true })).toBeVisible();
+  const filters = await openFilters(page, isMobile);
+  await filters.getByRole("button", { name: "All streaming services", exact: true }).click();
+  for (let index = 1; index <= MAX_FILTER_IDS; index++)
+    await filters.getByRole("button", { name: `Test service ${index}`, exact: true }).click();
+  const extra = filters.getByRole("button", { name: `Test service ${MAX_FILTER_IDS + 1}`, exact: true });
+  await expect(extra).toBeDisabled();
+  await expect(filters.getByText(`Up to ${MAX_FILTER_IDS} streaming services can be selected. Remove one to choose another.`, { exact: true })).toBeVisible();
+  await filters.getByRole("button", { name: "Test service 1", exact: true }).click();
+  await expect(extra).toBeEnabled();
+  await extra.click();
+  await closeFilters(page, isMobile);
+  await expect.poll(() => calls.discovery.at(-1)?.searchParams.get("providers")?.split(",").length).toBe(MAX_FILTER_IDS);
+  expect(calls.discovery.every((url) => (url.searchParams.get("providers")?.split(",").length ?? 0) <= MAX_FILTER_IDS)).toBe(true);
 });

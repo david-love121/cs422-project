@@ -2,6 +2,7 @@ import { movieService } from "@/lib/server/tmdb-service";
 import {
   CACHE_SECONDS,
   errorResponse,
+  parseCatalogMode,
   parseMovieId,
   requireNoQuery,
   sharedCacheHeaders,
@@ -14,9 +15,10 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    requireNoQuery(new URL(request.url).searchParams);
+    const { mode, search } = parseCatalogMode(new URL(request.url).searchParams);
+    requireNoQuery(search);
     const id = parseMovieId((await context.params).id);
-    return Response.json(await movieService().details(id), {
+    return Response.json(await movieService(mode).details(id), {
       headers: sharedCacheHeaders(CACHE_SECONDS.details),
     });
   } catch (error) {

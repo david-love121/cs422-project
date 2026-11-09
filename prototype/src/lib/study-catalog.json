@@ -1,0 +1,792 @@
+{
+  "retrieved_at": "2026-11-09",
+  "region": "US",
+  "source": "TMDB API v3 movie details and US watch-provider listings (JustWatch); English display text.",
+  "availability": "Subscription, free and ad-supported provider listings are a dated snapshot. They do not verify subscriber playback, audio tracks, subtitles, or extra charges. Recheck in the actual service before nomination.",
+  "study_movie_ids": [
+    1118224,
+    661374,
+    696806,
+    588228,
+    843527,
+    950071,
+    346648,
+    212778,
+    371645,
+    501929,
+    1584,
+    546554,
+    872585
+  ],
+  "movies": [
+    {
+      "id": 508442,
+      "title": "Soul",
+      "overview": "Joe Gardner is a middle school teacher with a love for jazz music. After a successful audition at the Half Note Club, he suddenly gets into an accident that separates his soul from his body and is transported to the You Seminar, a center in which souls develop and gain passions before being transported to a newborn child. Joe must enlist help from the other souls-in-training, like 22, a soul who has spent eons in the You Seminar, in order to get back to Earth.",
+      "poster_path": "/hm58Jw4Lw8OIeECIq5qyPYhAeRJ.jpg",
+      "backdrop_path": "/rQaHA74pevnGsxcKGaoZVGWe9TC.jpg",
+      "release_date": "2020-12-25",
+      "vote_average": 8.086,
+      "vote_count": 11900,
+      "popularity": 15.0505,
+      "original_language": "en",
+      "runtime": 101,
+      "genre_ids": [
+        16,
+        10751,
+        18,
+        10402,
+        14
+      ],
+      "provider_ids": [
+        337
+      ]
+    },
+    {
+      "id": 157336,
+      "title": "Interstellar",
+      "overview": "The adventures of a group of explorers who make use of a newly discovered wormhole to surpass the limitations on human space travel and conquer the vast distances involved in an interstellar voyage.",
+      "poster_path": "/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg",
+      "backdrop_path": "/8sNiAPPYU14PUepFNeSNGUTiHW.jpg",
+      "release_date": "2014-11-04",
+      "vote_average": 8.493,
+      "vote_count": 41826,
+      "popularity": 54.6012,
+      "original_language": "en",
+      "runtime": 169,
+      "genre_ids": [
+        12,
+        18,
+        878
+      ],
+      "provider_ids": [
+        350,
+        582,
+        633,
+        2243,
+        2303,
+        2616
+      ]
+    },
+    {
+      "id": 120467,
+      "title": "The Grand Budapest Hotel",
+      "overview": "The Grand Budapest Hotel tells of a legendary concierge at a famous European hotel between the wars and his friendship with a young employee who becomes his trusted protégé. The story involves the theft and recovery of a priceless Renaissance painting, the battle for an enormous family fortune and the slow and then sudden upheavals that transformed Europe during the first half of the 20th century.",
+      "poster_path": "/eWdyYQreja6JGCzqHWXpWHDrrPo.jpg",
+      "backdrop_path": "/jK65srQczOKTpW62wPxwwKztGgE.jpg",
+      "release_date": "2014-02-08",
+      "vote_average": 8.026,
+      "vote_count": 16725,
+      "popularity": 16.4145,
+      "original_language": "en",
+      "runtime": 100,
+      "genre_ids": [
+        35,
+        18
+      ],
+      "provider_ids": []
+    },
+    {
+      "id": 129,
+      "title": "Spirited Away",
+      "overview": "A young girl, Chihiro, becomes trapped in a strange new world of spirits. When her parents undergo a mysterious transformation, she must call upon the courage she never knew she had to free her family.",
+      "poster_path": "/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg",
+      "backdrop_path": "/m4TUa2ciEWSlk37rOsjiSIvZDXE.jpg",
+      "release_date": "2001-07-20",
+      "vote_average": 8.536,
+      "vote_count": 19195,
+      "popularity": 36.4273,
+      "original_language": "ja",
+      "runtime": 125,
+      "genre_ids": [
+        16,
+        10751,
+        14
+      ],
+      "provider_ids": [
+        1825,
+        1899
+      ]
+    },
+    {
+      "id": 496243,
+      "title": "Parasite",
+      "overview": "All unemployed, Ki-taek's family takes peculiar interest in the wealthy and glamorous Parks for their livelihood until they get entangled in an unexpected incident.",
+      "poster_path": "/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg",
+      "backdrop_path": "/TU9NIjwzjoKPwQHoHshkFcQUCG.jpg",
+      "release_date": "2019-05-30",
+      "vote_average": 8.489,
+      "vote_count": 21665,
+      "popularity": 30.7141,
+      "original_language": "ko",
+      "runtime": 133,
+      "genre_ids": [
+        35,
+        53,
+        18
+      ],
+      "provider_ids": [
+        191,
+        2616
+      ]
+    },
+    {
+      "id": 693134,
+      "title": "Dune: Part Two",
+      "overview": "Follow the mythic journey of Paul Atreides as he unites with Chani and the Fremen while on a path of revenge against the conspirators who destroyed his family. Facing a choice between the love of his life and the fate of the known universe, Paul endeavors to prevent a terrible future only he can foresee.",
+      "poster_path": "/6izwz7rsy95ARzTR3poZ8H6c5pp.jpg",
+      "backdrop_path": "/eZ239CUp1d6OryZEBPnO2n87gMG.jpg",
+      "release_date": "2024-02-27",
+      "vote_average": 8.144,
+      "vote_count": 8931,
+      "popularity": 42.8206,
+      "original_language": "en",
+      "runtime": 167,
+      "genre_ids": [
+        878,
+        12
+      ],
+      "provider_ids": [
+        1825,
+        1899,
+        2528
+      ]
+    },
+    {
+      "id": 194,
+      "title": "Amélie",
+      "overview": "At a tiny Parisian café, the adorable yet painfully shy Amélie accidentally discovers a gift for helping others. Soon Amelie is spending her days as a matchmaker, guardian angel, and all-around do-gooder. But when she bumps into a handsome stranger, will she find the courage to become the star of her very own love story?",
+      "poster_path": "/nSxDa3M9aMvGVLoItzWTepQ5h5d.jpg",
+      "backdrop_path": "/6n53UI4mX9QMfe2S0Pgt8mGebY1.jpg",
+      "release_date": "2001-04-25",
+      "vote_average": 7.92,
+      "vote_count": 12815,
+      "popularity": 15.4707,
+      "original_language": "fr",
+      "runtime": 122,
+      "genre_ids": [
+        35,
+        10749
+      ],
+      "provider_ids": []
+    },
+    {
+      "id": 545611,
+      "title": "Everything Everywhere All at Once",
+      "overview": "An aging Chinese immigrant is swept up in an insane adventure, where she alone can save what's important to her by connecting with the lives she could have led in other universes.",
+      "poster_path": "/u68AjlvlutfEIcpmbYpKcdi09ut.jpg",
+      "backdrop_path": "/fIwiFha3WPu5nHkBeMQ4GzEk0Hv.jpg",
+      "release_date": "2022-03-24",
+      "vote_average": 7.7,
+      "vote_count": 8635,
+      "popularity": 20.0698,
+      "original_language": "en",
+      "runtime": 140,
+      "genre_ids": [
+        28,
+        12,
+        878
+      ],
+      "provider_ids": []
+    },
+    {
+      "id": 120,
+      "title": "The Lord of the Rings: The Fellowship of the Ring",
+      "overview": "Young hobbit Frodo Baggins, after inheriting a mysterious ring from his uncle Bilbo, must leave his home in order to keep it from falling into the hands of its evil creator. Along the way, a fellowship is formed to protect the ringbearer and make sure that the ring arrives at its final destination: Mt. Doom, the only place where it can be destroyed.",
+      "poster_path": "/6oom5QYQ2yQTMJIbnvbkBL9cHo6.jpg",
+      "backdrop_path": "/oiwc338EoBgS4sEI2ixAny4KQKg.jpg",
+      "release_date": "2001-12-18",
+      "vote_average": 8.45,
+      "vote_count": 28824,
+      "popularity": 37.586,
+      "original_language": "en",
+      "runtime": 179,
+      "genre_ids": [
+        12,
+        14,
+        28
+      ],
+      "provider_ids": [
+        257,
+        363,
+        506,
+        507,
+        1825,
+        1899,
+        2528
+      ]
+    },
+    {
+      "id": 372058,
+      "title": "Your Name.",
+      "overview": "High schoolers Mitsuha and Taki are complete strangers living separate lives. But one night, they suddenly switch places. Mitsuha wakes up in Taki’s body, and he in hers. This bizarre occurrence continues to happen randomly, and the two must adjust their lives around each other.",
+      "poster_path": "/vfJFJPepRKapMd5G2ro7klIRysq.jpg",
+      "backdrop_path": "/mMtUybQ6hL24FXo0F3Z4j2KG7kZ.jpg",
+      "release_date": "2016-07-01",
+      "vote_average": 8.493,
+      "vote_count": 13183,
+      "popularity": 25.3309,
+      "original_language": "ja",
+      "runtime": 106,
+      "genre_ids": [
+        16,
+        10749,
+        18
+      ],
+      "provider_ids": [
+        1825,
+        1899
+      ]
+    },
+    {
+      "id": 10315,
+      "title": "Fantastic Mr. Fox",
+      "overview": "The Fantastic Mr. Fox, bored with his current life, plans a heist against the three local farmers. The farmers, tired of sharing their chickens with the sly fox, seek revenge against him and his family.",
+      "poster_path": "/bOVr292mwn3jxr1e0NmUPM1rcjo.jpg",
+      "backdrop_path": "/xRxSLhhjPG2D8l0BXi0KdN4IvPt.jpg",
+      "release_date": "2009-10-14",
+      "vote_average": 7.828,
+      "vote_count": 6441,
+      "popularity": 9.5403,
+      "original_language": "en",
+      "runtime": 87,
+      "genre_ids": [
+        12,
+        16,
+        35,
+        10751
+      ],
+      "provider_ids": [
+        337
+      ]
+    },
+    {
+      "id": 122,
+      "title": "The Lord of the Rings: The Return of the King",
+      "overview": "As armies mass for a final battle that will decide the fate of the world--and powerful, ancient forces of Light and Dark compete to determine the outcome--one member of the Fellowship of the Ring is revealed as the noble heir to the throne of the Kings of Men. Yet, the sole hope for triumph over evil lies with a brave hobbit, Frodo, who, accompanied by his loyal friend Sam and the hideous, wretched Gollum, ventures deep into the very dark heart of Mordor on his seemingly impossible quest to destroy the Ring of Power.​",
+      "poster_path": "/rCzpDGLbOoPwLjy3OAm5NUPOTrC.jpg",
+      "backdrop_path": "/ctiw6FZK4N36LmkjSklWEbuvlq9.jpg",
+      "release_date": "2003-12-17",
+      "vote_average": 8.507,
+      "vote_count": 27786,
+      "popularity": 35.6472,
+      "original_language": "en",
+      "runtime": 201,
+      "genre_ids": [
+        12,
+        14,
+        28
+      ],
+      "provider_ids": [
+        257,
+        363,
+        506,
+        507,
+        1825,
+        1899,
+        2528
+      ]
+    },
+    {
+      "id": 1858,
+      "title": "Transformers",
+      "overview": "Young teenager Sam Witwicky becomes involved in the ancient struggle between two extraterrestrial factions of transforming robots – the heroic Autobots and the evil Decepticons. Sam holds the clue to unimaginable power and the Decepticons will stop at nothing to retrieve it.",
+      "poster_path": "/lkZ9gqCEjzX85lKR6Jjd1uGAXNp.jpg",
+      "backdrop_path": "/iCDMBi6WLjUBnt24dNwHqqF81UL.jpg",
+      "release_date": "2007-06-27",
+      "vote_average": 6.853,
+      "vote_count": 12723,
+      "popularity": 4.4176,
+      "original_language": "en",
+      "runtime": 144,
+      "genre_ids": [
+        12,
+        878,
+        28
+      ],
+      "provider_ids": [
+        191,
+        212,
+        582,
+        633,
+        2303,
+        2528,
+        2616
+      ]
+    },
+    {
+      "id": 103,
+      "title": "Taxi Driver",
+      "overview": "Suffering from insomnia, disturbed loner Travis Bickle takes a job as a New York City cabbie, haunting the streets nightly, growing increasingly detached from reality as he dreams of cleaning up the filthy city.",
+      "poster_path": "/ekstpH614fwDX8DUln1a2Opz0N8.jpg",
+      "backdrop_path": "/9uddYYTNcLWpzUkl5iw1RUYhLhY.jpg",
+      "release_date": "1976-02-09",
+      "vote_average": 8.115,
+      "vote_count": 13993,
+      "popularity": 18.5746,
+      "original_language": "en",
+      "runtime": 114,
+      "genre_ids": [
+        80,
+        18
+      ],
+      "provider_ids": [
+        2745
+      ]
+    },
+    {
+      "id": 1417,
+      "title": "Pan's Labyrinth",
+      "overview": "In post–civil war Spain, 10-year-old Ofelia moves with her pregnant mother to live under the control of her cruel stepfather. Drawn into a mysterious labyrinth, she meets a faun who reveals that she may be a lost princess from an underground kingdom. To return to her true father, she must complete a series of surreal and perilous tasks that blur the line between reality and fantasy.",
+      "poster_path": "/khBQ6nN5FLfg9XgPXIZDkABJjqo.jpg",
+      "backdrop_path": "/6G6nqSW9S7EHA9HrYl0Z8uo2H7f.jpg",
+      "release_date": "2006-10-11",
+      "vote_average": 7.771,
+      "vote_count": 11905,
+      "popularity": 16.8759,
+      "original_language": "es",
+      "runtime": 118,
+      "genre_ids": [
+        14,
+        18,
+        10752
+      ],
+      "provider_ids": []
+    },
+    {
+      "id": 637,
+      "title": "Life Is Beautiful",
+      "overview": "A touching story of an Italian book seller of Jewish ancestry who lives in his own little fairy tale. His creative and happy life would come to an abrupt halt when his entire family is deported to a concentration camp during World War II. While locked up he tries to convince his son that the whole thing is just a game.",
+      "poster_path": "/74hLDKjD5aGYOotO6esUVaeISa2.jpg",
+      "backdrop_path": "/6aNKD81RHR1DqUUa8kOZ1TBY1Lp.jpg",
+      "release_date": "1997-12-20",
+      "vote_average": 8.436,
+      "vote_count": 14387,
+      "popularity": 14.3416,
+      "original_language": "it",
+      "runtime": 116,
+      "genre_ids": [
+        35,
+        18
+      ],
+      "provider_ids": [
+        191,
+        212,
+        582,
+        633,
+        2303,
+        2616
+      ]
+    },
+    {
+      "id": 11216,
+      "title": "Cinema Paradiso",
+      "overview": "A filmmaker recalls his childhood, when he fell in love with the movies at his village's theater and formed a deep friendship with the theater's projectionist.",
+      "poster_path": "/aRgPnx4aPS96f7CnhJH7IG5dN1A.jpg",
+      "backdrop_path": "/zoVeIgKzGJzpdG6Gwnr7iOYfIMU.jpg",
+      "release_date": "1988-11-17",
+      "vote_average": 8.433,
+      "vote_count": 5047,
+      "popularity": 14.2411,
+      "original_language": "it",
+      "runtime": 124,
+      "genre_ids": [
+        18,
+        10749
+      ],
+      "provider_ids": [
+        191,
+        212,
+        636
+      ]
+    },
+    {
+      "id": 19404,
+      "title": "Dilwale Dulhania Le Jayenge",
+      "overview": "Raj is a rich, carefree, happy-go-lucky second generation NRI. Simran is the daughter of Chaudhary Baldev Singh, who in spite of being an NRI is very strict about adherence to Indian values. Simran has left for India to be married to her childhood fiancé. Raj leaves for India with a mission at his hands, to claim his lady love under the noses of her whole family. Thus begins a saga.",
+      "poster_path": "/lfRkUr7DYdHldAqi3PwdQGBRBPM.jpg",
+      "backdrop_path": "/7VDLEHli74eLsYLNcq9djn1Gw76.jpg",
+      "release_date": "1995-10-20",
+      "vote_average": 8.501,
+      "vote_count": 4648,
+      "popularity": 7.871,
+      "original_language": "hi",
+      "runtime": 190,
+      "genre_ids": [
+        35,
+        18,
+        10749
+      ],
+      "provider_ids": [
+        8,
+        1796
+      ]
+    },
+    {
+      "id": 1118224,
+      "title": "Maharaja",
+      "overview": "A barber seeks vengeance after his home is burglarized, cryptically telling police his \"Lakshmi\" has been taken, leaving them uncertain if it's a person or object, jeer at his request until they learn what they're really looking for.",
+      "poster_path": "/s0m4TM1XRAftQStgKpw024RvkJo.jpg",
+      "backdrop_path": "/ot1UteJ1TL3xWuhkLRNzBULw4KJ.jpg",
+      "release_date": "2024-06-14",
+      "vote_average": 7.731,
+      "vote_count": 281,
+      "popularity": 2.6463,
+      "original_language": "ta",
+      "runtime": 141,
+      "genre_ids": [
+        28,
+        53,
+        9648
+      ],
+      "provider_ids": [
+        8,
+        1796
+      ]
+    },
+    {
+      "id": 661374,
+      "title": "Glass Onion: A Knives Out Mystery",
+      "overview": "World-famous detective Benoit Blanc heads to Greece to peel back the layers of a mystery surrounding a tech billionaire and his eclectic crew of friends.",
+      "poster_path": "/vDGr1YdrlfbU9wxTOdpf3zChmv9.jpg",
+      "backdrop_path": "/y3uOfZAYwLkbvhunswBCskNMrfI.jpg",
+      "release_date": "2022-11-23",
+      "vote_average": 7.019,
+      "vote_count": 7374,
+      "popularity": 11.1356,
+      "original_language": "en",
+      "runtime": 140,
+      "genre_ids": [
+        35,
+        80,
+        9648
+      ],
+      "provider_ids": [
+        8,
+        1796
+      ]
+    },
+    {
+      "id": 696806,
+      "title": "The Adam Project",
+      "overview": "After accidentally crash-landing in 2022, time-traveling fighter pilot Adam Reed teams up with his 12-year-old self on a mission to save the future.",
+      "poster_path": "/wFjboE0aFZNbVOF05fzrka9Fqyx.jpg",
+      "backdrop_path": "/ewUqXnwiRLhgmGhuksOdLgh49Ch.jpg",
+      "release_date": "2022-03-11",
+      "vote_average": 6.982,
+      "vote_count": 5261,
+      "popularity": 7.4127,
+      "original_language": "en",
+      "runtime": 106,
+      "genre_ids": [
+        12,
+        878,
+        35
+      ],
+      "provider_ids": [
+        8,
+        1796
+      ]
+    },
+    {
+      "id": 588228,
+      "title": "The Tomorrow War",
+      "overview": "The world is stunned when a group of time travelers arrive from the year 2051 to deliver an urgent message: Thirty years in the future, mankind is losing a global war against a deadly alien species. The only hope for survival is for soldiers and civilians from the present to be transported to the future and join the fight. Among those recruited is high school teacher and family man Dan Forester. Determined to save the world for his young daughter, Dan teams up with a brilliant scientist and his estranged father in a desperate quest to rewrite the fate of the planet.",
+      "poster_path": "/34nDCQZwaEvsy4CFO5hkGRFDCVU.jpg",
+      "backdrop_path": "/yizL4cEKsVvl17Wc1mGEIrQtM2F.jpg",
+      "release_date": "2021-09-03",
+      "vote_average": 7.524,
+      "vote_count": 4551,
+      "popularity": 9.8154,
+      "original_language": "en",
+      "runtime": 138,
+      "genre_ids": [
+        28,
+        878,
+        12
+      ],
+      "provider_ids": [
+        9,
+        613,
+        1898,
+        2100
+      ]
+    },
+    {
+      "id": 843527,
+      "title": "The Idea of You",
+      "overview": "40-year-old single mom Solène begins an unexpected romance with 24-year-old Hayes Campbell, the lead singer of August Moon, the hottest boy band on the planet. As they begin a whirlwind romance, it isn't long before Hayes' superstar status poses unavoidable challenges to their relationship, and Solène soon discovers that life in the glare of his spotlight might be more than she bargained for.",
+      "poster_path": "/Y5P4Q3q8nrruZ9aD3wXeJS2Plg.jpg",
+      "backdrop_path": "/sI6uCeF8mUlZx22mFfHSi9W3XQ9.jpg",
+      "release_date": "2024-05-02",
+      "vote_average": 7.225,
+      "vote_count": 2077,
+      "popularity": 17.5639,
+      "original_language": "en",
+      "runtime": 116,
+      "genre_ids": [
+        10402,
+        35,
+        10749,
+        18
+      ],
+      "provider_ids": [
+        9,
+        582,
+        633,
+        2100,
+        2303,
+        2616
+      ]
+    },
+    {
+      "id": 950071,
+      "title": "Jaane Jaan",
+      "overview": "When a single mother her teenage daughter becomes ensnared in a deadly crime,  find an unexpected ally in their neighbor, a simple, doting but genius teacher math teacher comes to aid, while a tenacious cop digs into the case.",
+      "poster_path": "/oaUOV9VCNM5MjrmonqgH4o3XNwQ.jpg",
+      "backdrop_path": "/eF8XLbbBd5cIfvS00tzl0jWAcOX.jpg",
+      "release_date": "2023-09-21",
+      "vote_average": 7.035,
+      "vote_count": 127,
+      "popularity": 1.29,
+      "original_language": "hi",
+      "runtime": 139,
+      "genre_ids": [
+        80,
+        53,
+        18
+      ],
+      "provider_ids": [
+        8,
+        1796
+      ]
+    },
+    {
+      "id": 346648,
+      "title": "Paddington 2",
+      "overview": "Paddington, now happily settled with the Browns, picks up a series of odd jobs to buy the perfect present for his Aunt Lucy, but it is stolen.",
+      "poster_path": "/1OJ9vkD5xPt3skC6KguyXAgagRZ.jpg",
+      "backdrop_path": "/iJgNOTSBNrC90U2xyYq9ln0b35o.jpg",
+      "release_date": "2017-11-05",
+      "vote_average": 7.489,
+      "vote_count": 2973,
+      "popularity": 7.5042,
+      "original_language": "en",
+      "runtime": 104,
+      "genre_ids": [
+        12,
+        35,
+        10751
+      ],
+      "provider_ids": [
+        1825,
+        1899
+      ]
+    },
+    {
+      "id": 212778,
+      "title": "Chef",
+      "overview": "When Chef Carl Casper suddenly quits his job at a prominent Los Angeles restaurant after refusing to compromise his creative integrity for its controlling owner, he is left to figure out what's next. Finding himself in Miami, he teams up with his ex-wife, his friend and his son to launch a food truck. Taking to the road, Chef Carl goes back to his roots to reignite his passion for the kitchen -- and zest for life and love.",
+      "poster_path": "/hyp8EXDmO4dSC8V6Q5jU7gD1kcg.jpg",
+      "backdrop_path": "/igVNCpS132rOqrnDsrVYW5HCIsM.jpg",
+      "release_date": "2014-05-08",
+      "vote_average": 7.117,
+      "vote_count": 3837,
+      "popularity": 5.3294,
+      "original_language": "en",
+      "runtime": 114,
+      "genre_ids": [
+        35
+      ],
+      "provider_ids": [
+        191,
+        235,
+        257,
+        600,
+        1963
+      ]
+    },
+    {
+      "id": 371645,
+      "title": "Hunt for the Wilderpeople",
+      "overview": "Ricky is a defiant young city kid who finds himself on the run with his cantankerous foster uncle in the wild New Zealand bush. A national manhunt ensues, and the two are forced to put aside their differences and work together to survive.",
+      "poster_path": "/hkmz9rxgcweizXNElozGeKwmAJE.jpg",
+      "backdrop_path": "/ixpUtvrZNwk6LBObXaNH8fh4FYf.jpg",
+      "release_date": "2016-01-22",
+      "vote_average": 7.645,
+      "vote_count": 2445,
+      "popularity": 4.4299,
+      "original_language": "en",
+      "runtime": 101,
+      "genre_ids": [
+        12,
+        35,
+        18
+      ],
+      "provider_ids": [
+        9,
+        73,
+        207,
+        257,
+        386,
+        387,
+        538,
+        600,
+        613,
+        1898,
+        2100
+      ]
+    },
+    {
+      "id": 501929,
+      "title": "The Mitchells vs. the Machines",
+      "overview": "A quirky, dysfunctional family's road trip is upended when they find themselves in the middle of the robot apocalypse and suddenly become humanity's unlikeliest last hope.",
+      "poster_path": "/mI2Di7HmskQQ34kz0iau6J1vr70.jpg",
+      "backdrop_path": "/vsZLf5uog08pAnfsMuDWrsLWUUF.jpg",
+      "release_date": "2021-04-22",
+      "vote_average": 7.821,
+      "vote_count": 3573,
+      "popularity": 8.5462,
+      "original_language": "en",
+      "runtime": 110,
+      "genre_ids": [
+        16,
+        12,
+        35
+      ],
+      "provider_ids": [
+        8,
+        1796
+      ]
+    },
+    {
+      "id": 1584,
+      "title": "The School of Rock",
+      "overview": "Fired from his band and hard up for cash, guitarist and vocalist Dewey Finn finagles his way into a job as a fifth-grade substitute teacher at a private school, where he secretly begins teaching his straight-A students the finer points of rock 'n' roll and the power of sticking it to the man. But as the school’s stern principal closes in and the Battle of the Bands looms, Dewey must risk everything to prove that rock 'n' roll can change lives.",
+      "poster_path": "/zXLXaepIBvFVLU25DH3wv4IPSbe.jpg",
+      "backdrop_path": "/k5MTAtE9CCi5TWA84qaFMYv3ajB.jpg",
+      "release_date": "2003-10-03",
+      "vote_average": 7.092,
+      "vote_count": 6471,
+      "popularity": 6.8952,
+      "original_language": "en",
+      "runtime": 110,
+      "genre_ids": [
+        35,
+        10751,
+        10402
+      ],
+      "provider_ids": [
+        191,
+        212,
+        235,
+        582,
+        633,
+        1855,
+        2303,
+        2528,
+        2616
+      ]
+    },
+    {
+      "id": 546554,
+      "title": "Knives Out",
+      "overview": "When renowned crime novelist Harlan Thrombey is found dead at his estate just after his 85th birthday, the inquisitive and debonair Detective Benoit Blanc is mysteriously enlisted to investigate. From Harlan's dysfunctional family to his devoted staff, Blanc sifts through a web of red herrings and self-serving lies to uncover the truth behind Harlan's untimely death.",
+      "poster_path": "/pThyQovXQrw2m0s9x82twj48Jq4.jpg",
+      "backdrop_path": "/4HWAQu28e2yaWrtupFPGFkdNU7V.jpg",
+      "release_date": "2019-11-27",
+      "vote_average": 7.8,
+      "vote_count": 14768,
+      "popularity": 16.1333,
+      "original_language": "en",
+      "runtime": 131,
+      "genre_ids": [
+        35,
+        80,
+        9648
+      ],
+      "provider_ids": [
+        207,
+        528,
+        1854,
+        2358,
+        2383,
+        2754
+      ]
+    },
+    {
+      "id": 872585,
+      "title": "Oppenheimer",
+      "overview": "The story of J. Robert Oppenheimer's role in the development of the atomic bomb during World War II.",
+      "poster_path": "/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg",
+      "backdrop_path": "/neeNHeXjMF5fXoCJRsOmkNGC7q.jpg",
+      "release_date": "2023-07-19",
+      "vote_average": 8.0,
+      "vote_count": 12868,
+      "popularity": 37.4263,
+      "original_language": "en",
+      "runtime": 181,
+      "genre_ids": [
+        18,
+        36,
+        10752
+      ],
+      "provider_ids": [
+        332,
+        386,
+        387,
+        2528
+      ]
+    }
+  ],
+  "providers": [
+    {
+      "display_priority": 0,
+      "logo_path": "/rK1KljqmbvO9HQa1PBFLILWah72.png",
+      "provider_name": "Netflix",
+      "provider_id": 8
+    },
+    {
+      "display_priority": 5,
+      "logo_path": "/gMZdpavHmxFNnLpMHwVxfqeux2g.png",
+      "provider_name": "Amazon Prime Video",
+      "provider_id": 9
+    },
+    {
+      "display_priority": 4,
+      "logo_path": "/5eZ872CghnHFLB1j8grszbrx0dx.png",
+      "provider_name": "Disney Plus",
+      "provider_id": 337
+    },
+    {
+      "display_priority": 8,
+      "logo_path": "/44uAnmSqvA4yBOdbPWN8YgQHjWm.png",
+      "provider_name": "Hulu",
+      "provider_id": 15
+    },
+    {
+      "display_priority": 2,
+      "logo_path": "/9icYBfYFcwgCbky5VdGUIKJ4C5i.png",
+      "provider_name": "Apple TV",
+      "provider_id": 350
+    },
+    {
+      "display_priority": 26,
+      "logo_path": "/skypuy7SXuugIQeYg0IglmzoKaS.png",
+      "provider_name": "HBO Max",
+      "provider_id": 1899
+    },
+    {
+      "display_priority": 39,
+      "logo_path": "/cltb8XKan9ierp23ItPmCOcVLRa.png",
+      "provider_name": "Kanopy",
+      "provider_id": 191
+    },
+    {
+      "display_priority": 33,
+      "logo_path": "/b7uhrYJtAe7b1ieJGg705vTbwrX.png",
+      "provider_name": "The Roku Channel",
+      "provider_id": 207
+    }
+  ]
+}

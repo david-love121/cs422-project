@@ -10,7 +10,7 @@ export type Limits = {
   subtitles: boolean;
 };
 
-/** Access fields describe the group's own check, never inferred provider data. */
+/** Prototype access assumptions follow the group's agreed settings. */
 export type Candidate = {
   movie: Movie;
   source: number;
@@ -21,6 +21,30 @@ export type Candidate = {
 };
 
 export type Ballot = Record<number, Response>;
+
+export const PROTOTYPE_RUNTIME_MINUTES = 120;
+
+/** Keep nomination immediate when catalog fields are missing or incomplete. */
+export function assumeCandidate(
+  movie: Movie,
+  limits: Limits,
+  nominatedBy: number | null,
+): Candidate {
+  const runtime = typeof movie.runtime === "number" &&
+    Number.isFinite(movie.runtime) && movie.runtime > 0
+    ? movie.runtime
+    : PROTOTYPE_RUNTIME_MINUTES;
+  return {
+    movie: { ...movie, runtime },
+    source: limits.services.find((id) => movie.provider_ids?.includes(id)) ?? limits.services[0] ?? 0,
+    audio: limits.audioLanguages.includes(movie.original_language)
+      ? movie.original_language
+      : limits.audioLanguages[0] ?? "",
+    subtitles: limits.subtitles,
+    accessConfirmed: true,
+    nominatedBy,
+  };
+}
 
 export const RESPONSE_OPTIONS: {
   value: Response;
@@ -41,7 +65,7 @@ export const RESPONSE_OPTIONS: {
   {
     value: "veto",
     label: "Veto",
-    description: "I can't watch this. Remove it from this round.",
+    description: "I object to watching this movie. Remove it from this round.",
   },
 ];
 
@@ -52,7 +76,7 @@ export function remainingMinutes(deadline: string, now = Date.now()): number {
     : 0;
 }
 
-/** An empty list means the title meets every explicitly confirmed shared limit. */
+/** Hard requirements apply to every title; these exclusions never spend a preference veto. */
 export function eligibility(
   candidate: Candidate,
   limits: Limits,

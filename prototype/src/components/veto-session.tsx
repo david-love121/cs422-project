@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Check,
@@ -10,182 +10,43 @@ import {
   LockKeyhole,
   Plus,
   ShieldCheck,
-  Users,
   X,
 } from "lucide-react";
 import { DEMO_LANGUAGES, DEMO_MOVIES, DEMO_PROVIDERS } from "@/lib/demo";
 import { imageUrl, type Movie } from "@/lib/tmdb";
 import {
-  defaultLimits,
+  assumeCandidate,
   eligibility,
+  PROTOTYPE_RUNTIME_MINUTES,
   remainingMinutes,
   RESPONSE_OPTIONS,
   tally,
-  type Ballot,
   type Candidate,
-  type Limits,
   type Response,
 } from "@/lib/veto";
 import "@/app/veto.css";
 
-const SESSION_KEY = "veto-session-v1";
-type Phase =
-  | "setup"
-  | "suggest"
-  | "handoff"
-  | "vote"
-  | "review"
-  | "choose"
-  | "confirm"
-  | "done"
-  | "paused"
-  | "stopped";
-type Session = {
-  version: 1;
-  phase: Phase;
-  limits: Limits;
-  names: string[];
-  candidates: Candidate[];
-  nomination: number;
-  voter: number;
-  index: number;
-  draft: Ballot;
-  ballots: Ballot[];
-  excluded: number[];
-  chosen: number | null;
-  confirmedAt: number | null;
-  resume: "vote" | "review";
-};
-function freshSession(): Session {
-  return {
-    version: 1,
-    phase: "setup",
-    limits: defaultLimits(),
-    names: [
-      "Viewer 1",
-      "Viewer 2",
-      "Viewer 3",
-      "Viewer 4",
-      "Viewer 5",
-      "Viewer 6",
-    ],
-    candidates: [],
-    nomination: 0,
-    voter: 0,
-    index: 0,
-    draft: {},
-    ballots: [],
-    excluded: [],
-    chosen: null,
-    confirmedAt: null,
-    resume: "vote",
-  };
-}
-function readSession(value: string | null): Session | null {
-  if (!value) return null;
-  try {
-    const s = JSON.parse(value) as Session;
-    const phases: Phase[] = [
-      "setup",
-      "suggest",
-      "handoff",
-      "vote",
-      "review",
-      "choose",
-      "confirm",
-      "done",
-      "paused",
-      "stopped",
-    ];
-    if (
-      s.version !== 1 ||
-      !["vote", "review"].includes(s.resume) ||
-      !phases.includes(s.phase) ||
-      !s.limits ||
-      !Number.isInteger(s.limits.viewers) ||
-      s.limits.viewers < 2 ||
-      s.limits.viewers > 6 ||
-      !Number.isFinite(Date.parse(s.limits.deadline)) ||
-      !Array.isArray(s.limits.services) ||
-      !Array.isArray(s.limits.audioLanguages) ||
-      !Array.isArray(s.names) ||
-      s.names.length !== 6 ||
-      !s.names.every((n) => typeof n === "string") ||
-      !Array.isArray(s.candidates) ||
-      s.candidates.length > 6 ||
-      !Array.isArray(s.ballots) ||
-      !Array.isArray(s.excluded) ||
-      !s.draft ||
-      !Number.isInteger(s.voter) ||
-      s.voter < 0 ||
-      s.voter > s.limits.viewers ||
-      !Number.isInteger(s.nomination) ||
-      s.nomination < 0 ||
-      s.nomination > s.limits.viewers ||
-      !Number.isInteger(s.index) ||
-      s.index < 0 ||
-      s.index > 5
-    )
-      return null;
-    if (
-      !s.candidates.every(
-        (c) =>
-          c.movie &&
-          Number.isInteger(c.movie.id) &&
-          typeof c.movie.title === "string" &&
-          typeof c.movie.overview === "string" &&
-          typeof c.audio === "string" &&
-          typeof c.accessConfirmed === "boolean",
-      )
-    )
-      return null;
-    if (
-      new Set(s.candidates.map((c) => c.movie.id)).size !== s.candidates.length
-    )
-      return null;
-    const validBallot = (b: Ballot) =>
-      b &&
-      typeof b === "object" &&
-      Object.values(b).every((v) =>
-        RESPONSE_OPTIONS.some((r) => r.value === v),
-      ) &&
-      Object.values(b).filter((v) => v === "veto").length <= 1;
-    if (
-      !validBallot(s.draft) ||
-      !s.ballots.every(validBallot) ||
-      s.ballots.length !== s.voter
-    )
-      return null;
-    if (
-      ["handoff", "vote", "review", "choose", "confirm", "done"].includes(
-        s.phase,
-      ) &&
-      (!s.candidates.length || s.index >= s.candidates.length)
-    )
-      return null;
-    if (
-      ["choose", "confirm", "done"].includes(s.phase) &&
-      s.ballots.length !== s.limits.viewers
-    )
-      return null;
-    if (s.phase === "vote" || s.phase === "review")
-      return { ...s, resume: s.phase, phase: "handoff" };
-    return s;
-  } catch {
-    return null;
-  }
-}
+import {
+  SESSION_KEY,
+  freshSession,
+  readSession,
+  restartSession,
+  saveResponse as saveSessionResponse,
+  submitTurn,
+  startVoting as startSessionVoting,
+  pauseSession,
+  confirmDecision,
+  type Phase,
+  type Recovery,
+  type Session,
+} from "@/lib/session";
+import MoviePoster from "@/components/movie-poster";
+
 const serviceName = (id: number) =>
   DEMO_PROVIDERS.find((p) => p.provider_id === id)?.provider_name ||
   "Selected service";
 const languageName = (code: string) =>
-  code === "ta"
-    ? "Tamil"
-    : DEMO_LANGUAGES.find((l) => l.iso_639_1 === code)?.english_name || code;
-const LANGUAGES = [
-  ...DEMO_LANGUAGES,
-  { iso_639_1: "ta", english_name: "Tamil", name: "Tamil" },
-];
+  DEMO_LANGUAGES.find((l) => l.iso_639_1 === code)?.english_name || code;
 const time = (value: number | string) =>
   new Date(value).toLocaleTimeString([], {
     hour: "numeric",
@@ -198,52 +59,6 @@ const localDateTime = (value: string) => {
     .slice(0, 16);
 };
 
-function AccessDialog({
-  children,
-  onClose,
-}: {
-  children: ReactNode;
-  onClose: () => void;
-}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const dialog = ref.current;
-    dialog?.showModal();
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      dialog?.close();
-      document.body.style.overflow = previous;
-    };
-  }, []);
-  return (
-    <dialog
-      ref={ref}
-      aria-labelledby="v-access-title"
-      className="v-access-dialog"
-      onCancel={onClose}
-    >
-      {children}
-    </dialog>
-  );
-}
-function MovieArtwork({ movie }: { movie: Movie }) {
-  const [failed, setFailed] = useState(false);
-  const src = imageUrl(movie.poster_path);
-  return (
-    <div className="v-artwork">
-      {src && !failed ? (
-        <img
-          src={src}
-          alt={`${movie.title} poster`}
-          onError={() => setFailed(true)}
-        />
-      ) : (
-        <Film size={30} />
-      )}
-    </div>
-  );
-}
 function CandidateInfo({ candidate }: { candidate: Candidate }) {
   return (
     <div className="v-meta">
@@ -252,10 +67,10 @@ function CandidateInfo({ candidate }: { candidate: Candidate }) {
       <span>{languageName(candidate.audio)} audio</span>
       <span>
         {candidate.subtitles
-          ? "English subtitles confirmed"
-          : "Subtitles not required / not confirmed"}
+          ? "English subtitles assumed"
+          : "Subtitles not required"}
       </span>
-      <span>No extra charge · checked by group</span>
+      <span>Prototype access assumptions</span>
     </div>
   );
 }
@@ -263,25 +78,26 @@ function CandidateInfo({ candidate }: { candidate: Candidate }) {
 export default function VetoSession({
   saved,
   onExplore,
+  catalogMovies = DEMO_MOVIES,
+  catalogNote,
 }: {
   saved: Movie[];
   onExplore: () => void;
+  catalogMovies?: Movie[];
+  catalogNote?: string;
 }) {
   const [s, setSession] = useState<Session | null>(null);
   const [now, setNow] = useState(0);
   const [storageNote, setStorageNote] = useState("");
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
-  const [movie, setMovie] = useState<Movie | null>(null);
-  const [source, setSource] = useState(8);
-  const [audio, setAudio] = useState("en");
-  const [subtitles, setSubtitles] = useState(false);
-  const [access, setAccess] = useState(false);
-  const [runtime, setRuntime] = useState("");
+  const [suggestionError, setSuggestionError] = useState("");
   const [choice, setChoice] = useState<Response | null>(null);
   const [conflict, setConflict] = useState(false);
-  const [restart, setRestart] = useState<"another" | "limits" | null>(null);
+  const [restart, setRestart] = useState<Recovery | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const movieHeadingRef = useRef<HTMLHeadingElement>(null);
+  const recoveryHeadingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -319,9 +135,18 @@ export default function VetoSession({
     return () => clearTimeout(warning);
   }, [s]);
   const activePhase = s?.phase;
+  const activeNomination = s?.nomination;
+  const activeVoter = s?.voter;
+  const activeMovie = s?.candidates[s.index]?.movie.id;
+  const candidateCount = s?.candidates.length;
   useEffect(() => {
-    headingRef.current?.focus();
-  }, [activePhase]); // Move focus only when the task changes.
+    const target = restart
+      ? recoveryHeadingRef
+      : activePhase === "vote"
+        ? movieHeadingRef
+        : headingRef;
+    target.current?.focus();
+  }, [activePhase, activeNomination, activeVoter, activeMovie, candidateCount, restart]);
 
   if (!s)
     return (
@@ -370,7 +195,7 @@ export default function VetoSession({
     paused: "The round is paused.",
     stopped: "That’s a wrap for tonight.",
   };
-  const combined = [...saved, ...DEMO_MOVIES].filter(
+  const combined = [...saved, ...catalogMovies].filter(
     (m, i, list) => list.findIndex((x) => x.id === m.id) === i,
   );
   const available = combined.filter(
@@ -379,44 +204,22 @@ export default function VetoSession({
       !s.excluded.includes(m.id) &&
       m.title.toLowerCase().includes(search.toLowerCase()),
   );
-  const proposed: Candidate | null = movie
-    ? {
-        movie: { ...movie, runtime: Number(runtime) },
-        source,
-        audio,
-        subtitles,
-        accessConfirmed: access,
-        nominatedBy: nominating ? s.nomination : null,
-      }
-    : null;
-  const reasons = proposed ? eligibility(proposed, s.limits, now) : [];
-
-  function openMovie(m: Movie) {
-    setMovie(m);
-    setRuntime(m.runtime ? String(m.runtime) : "");
-    setSource(s!.limits.services[0] || 8);
-    setAudio(
-      s!.limits.audioLanguages.includes(m.original_language)
-        ? m.original_language
-        : s!.limits.audioLanguages[0],
-    );
-    setSubtitles(false);
-    setAccess(false);
-    setNotice("");
-  }
-  function addCandidate() {
-    if (
-      !proposed ||
-      eligibility(proposed, s!.limits).length ||
-      s!.candidates.length >= 6
-    )
+  function addMovie(movie: Movie) {
+    if (s!.phase !== "suggest" || s!.candidates.length >= 6 ||
+      s!.candidates.some((candidate) => candidate.movie.id === movie.id)) return;
+    const candidate = assumeCandidate(movie, s!.limits, nominating ? s!.nomination : null);
+    const reasons = eligibility(candidate, s!.limits);
+    if (reasons.length) {
+      setSuggestionError(`${movie.title}: ${reasons.join(" ")}`);
       return;
+    }
     update({
-      candidates: [...s!.candidates, proposed],
+      candidates: [...s!.candidates, candidate],
       nomination: nominating ? s!.nomination + 1 : s!.nomination,
     });
-    setMovie(null);
-    setNotice(`${proposed.movie.title} added. Access recorded for this round.`);
+    setSearch("");
+    setSuggestionError("");
+    setNotice(`${movie.title} added to this round.`);
   }
   function pick(value: Response) {
     if (
@@ -446,93 +249,68 @@ export default function VetoSession({
       setConflict(true);
       return;
     }
-    update({
-      draft: { ...s!.draft, [current.movie.id]: choice },
-      index: s!.index < s!.candidates.length - 1 ? s!.index + 1 : s!.index,
-      phase: s!.index < s!.candidates.length - 1 ? "vote" : "review",
-    });
+    setSession(saveSessionResponse(s!, choice));
     setChoice(null);
     setConflict(false);
     setNotice("Response saved to your turn.");
   }
   function beginFresh() {
-    const reset = freshSession();
-    setSession({
-      ...reset,
-      limits: s!.limits,
-      names: s!.names,
-      excluded: [
-        ...new Set([...s!.excluded, ...s!.candidates.map((c) => c.movie.id)]),
-      ],
-      phase: restart === "limits" ? "setup" : "suggest",
-    });
+    if (!restart) return;
+    setSession(restartSession(s!, restart));
+    setNotice(restart === "reconsider"
+      ? "Fresh round agreed. Previously rejected titles may be suggested again, with fresh responses."
+      : "Fresh round started. Only recorded objections stay excluded; other films may be suggested again.");
     setRestart(null);
-    setMovie(null);
+    setSuggestionError("");
     setSearch("");
     setChoice(null);
     setConflict(false);
-    setNotice("Fresh round started. Previous titles stay excluded.");
   }
   function startEvening() {
     setSession(freshSession());
-    setMovie(null);
+    setSuggestionError("");
     setSearch("");
     setChoice(null);
-    setAccess(false);
     setNotice("");
     setConflict(false);
     setRestart(null);
   }
   function pause() {
-    update({
-      phase: "paused",
-      resume: s!.phase === "review" ? "review" : "vote",
-    });
+    setSession(pauseSession(s!));
+    setNotice("");
     setChoice(null);
     setConflict(false);
   }
+  function reviewAccess() {
+    pause();
+    setRestart("limits");
+  }
   function startVoting() {
-    if (
-      !s!.candidates.length ||
-      s!.candidates.some((c) => eligibility(c, s!.limits).length)
-    ) {
+    const next = startSessionVoting(s!);
+    if (next === s) {
       setNotice(
         "The viewing window has changed. Review the shortlist or shared limits.",
       );
       return;
     }
-    update({
-      phase: "handoff",
-      voter: 0,
-      index: 0,
-      draft: {},
-      ballots: [],
-      resume: "vote",
-    });
+    setSession(next);
+    setNotice("");
   }
   function confirmChoice(confirmedAt: number) {
-    if (
-      !selected ||
-      eligibility(selected, s!.limits).length ||
-      results.find((r) => r.candidate.movie.id === selected.movie.id)
-        ?.eliminated
-    ) {
+    const next = confirmDecision(s!, confirmedAt);
+    if (next === s) {
       setNotice(
         "This movie no longer meets the shared limits. Return to results and choose a shorter option.",
       );
       setNow(confirmedAt);
       return;
     }
-    update({ phase: "done", confirmedAt });
+    setSession(next);
+    setNotice("");
   }
 
   return (
     <section className="v-session" aria-label="Veto shared movie decision">
-      <div className="v-topline">
-        <span className="v-device">
-          <Users size={14} /> One shared device · 2–6 viewers
-        </span>
-      </div>
       <ol className="v-stages" aria-label="Decision progress">
         {["Setup", "Suggest", "Vote", "Choose"].map((label, i) => (
           <li
@@ -545,15 +323,13 @@ export default function VetoSession({
           </li>
         ))}
       </ol>
-      <header className="v-intro">
+      {s.phase !== "setup" && <header className="v-intro">
         <div>
           <h1 ref={headingRef} tabIndex={-1}>
             {stageTitle[s.phase]}
           </h1>
           <p>
-            {s.phase === "setup"
-              ? "Set the limits. Suggest a film. Decide together."
-              : s.phase === "suggest"
+            {s.phase === "suggest"
                 ? "Everyone gets a suggestion. Only movies that fit your agreed limits enter the round."
                 : ["vote", "review"].includes(s.phase)
                   ? "Your responses stay covered when you finish. You can correct them before submitting."
@@ -562,7 +338,6 @@ export default function VetoSession({
                     : "A little clarity makes room for a better evening."}
           </p>
         </div>
-        {s.phase !== "setup" && (
           <div className="v-time-chip">
             <Clock3 size={17} />
             <span>
@@ -571,8 +346,7 @@ export default function VetoSession({
               End by {time(s.limits.deadline)}
             </span>
           </div>
-        )}
-      </header>
+      </header>}
       {storageNote && (
         <p className="v-alert" role="status">
           {storageNote}
@@ -591,38 +365,46 @@ export default function VetoSession({
           aria-label="Fresh round agreement"
         >
           <p className="v-kicker">AGREE BEFORE STARTING AGAIN</p>
-          <h2>
+          <h2 ref={recoveryHeadingRef} tabIndex={-1}>
             {restart === "limits"
               ? "Review limits in a fresh round?"
-              : "Try another set?"}
+              : restart === "reconsider"
+                ? "Reconsider rejected titles in a fresh round?"
+                : "Try another set?"}
           </h2>
           <div className="v-recovery-grid">
             <div>
               <strong>Keep</strong>
               <p>
-                Viewers, deadline, services, audio, subtitles, and previously
-                considered titles.
+                Viewers, deadline, services, audio, and subtitles.
+                {restart === "reconsider"
+                  ? " Previously rejected titles may be suggested again by agreement."
+                  : " Recorded objections stay excluded. Films without an objection may be suggested again."}
               </p>
             </div>
             <div>
               <strong>Reset</strong>
               <p>
-                All candidates and responses. Everyone gets a new turn and one
-                veto.
+                All candidates and responses. Everyone gets a
+                fresh nomination opportunity, a new turn, and one veto.
               </p>
             </div>
             <div>
               <strong>Recheck</strong>
-              <p>Remaining time and access for every new movie.</p>
+              <p>Remaining time and shared requirements for every new nomination.</p>
             </div>
           </div>
           <p>
             Only continue when the group agrees. Existing ballots will be
-            cleared.
+            cleared. {restart === "limits"
+              ? "Review the shared limits, then nominate each movie again."
+              : "Nominate each movie again before starting private turns."}
           </p>
           <div className="v-actions">
             <button className="v-primary" onClick={beginFresh}>
-              Agree to a fresh round <ArrowRight size={16} />
+              {restart === "reconsider"
+                ? "Agree to reconsider in a fresh round"
+                : "Agree to a fresh round"} <ArrowRight size={16} />
             </button>
             <button className="v-secondary" onClick={() => setRestart(null)}>
               Keep this round
@@ -652,7 +434,7 @@ export default function VetoSession({
                 <div className="v-section-title">
                   <span>01</span>
                   <div>
-                    <h2>Who’s watching?</h2>
+                    <h1 ref={headingRef} tabIndex={-1}>Who’s watching?</h1>
                   </div>
                 </div>
                 <label className="v-field">
@@ -754,7 +536,7 @@ export default function VetoSession({
                 <fieldset className="v-fieldset">
                   <legend>Audio languages everyone accepts</legend>
                   <div className="v-chips">
-                    {LANGUAGES.map((l) => (
+                    {DEMO_LANGUAGES.map((l) => (
                       <button
                         key={l.iso_639_1}
                         type="button"
@@ -841,7 +623,7 @@ export default function VetoSession({
                         type="search"
                         placeholder="Search the collection or your saved ideas"
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={(e) => { setSearch(e.target.value); setSuggestionError(""); }}
                       />
                     </label>
                     <div className="v-catalog">
@@ -849,7 +631,7 @@ export default function VetoSession({
                         <button
                           key={m.id}
                           className="v-catalog-row"
-                          onClick={() => openMovie(m)}
+                          onClick={() => addMovie(m)}
                         >
                           <span className="v-mini-poster">
                             {m.poster_path ? (
@@ -868,7 +650,7 @@ export default function VetoSession({
                               {m.release_date?.slice(0, 4)} ·{" "}
                               {m.runtime
                                 ? `${m.runtime} min`
-                                : "Runtime needs checking"}
+                                : `${PROTOTYPE_RUNTIME_MINUTES} min assumed`}
                               {saved.some((x) => x.id === m.id)
                                 ? " · Saved idea"
                                 : ""}
@@ -885,9 +667,10 @@ export default function VetoSession({
                       </p>
                     )}
                     <p className="v-hint">
-                      Saved ideas and prepared film metadata. Service, audio,
-                      and subtitle access must be checked by your group.
+                      {catalogNote && <>{catalogNote} </>}
+                      Prototype assumes agreed streaming, audio and subtitle access.
                     </p>
+                    {suggestionError && <p className="v-error" role="alert">{suggestionError}</p>}
                   </>
                 )}
                 {nominating ? (
@@ -896,7 +679,8 @@ export default function VetoSession({
                       className="v-secondary"
                       onClick={() => {
                         update({ nomination: s.nomination + 1 });
-                        setMovie(null);
+                        setSearch("");
+                        setSuggestionError("");
                       }}
                     >
                       Skip my suggestion
@@ -920,7 +704,7 @@ export default function VetoSession({
                   <div className="v-alert">
                     <strong>No eligible titles yet.</strong>
                     <p>
-                      Add and verify a movie that fits, review shared limits, or
+                      Add a movie that fits, review shared limits, or
                       stop for tonight. Your limits have not been relaxed.
                     </p>
                   </div>
@@ -931,6 +715,9 @@ export default function VetoSession({
                     onClick={() => setRestart("limits")}
                   >
                     Review shared limits
+                  </button>
+                  <button className="v-text" onClick={() => setRestart("reconsider")}>
+                    Reconsider rejected titles
                   </button>
                   <button
                     className="v-text"
@@ -980,7 +767,7 @@ export default function VetoSession({
                     </div>
                     <small>
                       {c.nominatedBy === null
-                        ? "Veto-added choice"
+                        ? "Group-added choice"
                         : `${name(c.nominatedBy)}’s suggestion`}
                     </small>
                     <CandidateInfo candidate={c} />
@@ -1026,6 +813,13 @@ export default function VetoSession({
                 Private on screen, not anonymous. Group totals can allow others
                 to infer a response.
               </p>
+              {s.voter < s.limits.viewers && (
+                <p className="v-hint">
+                  Access, accessibility, audio, subtitles, and time are hard
+                  requirements. If one is unmet, use access review rather than
+                  spending your preference veto.
+                </p>
+              )}
               <button
                 className="v-primary"
                 onClick={() => {
@@ -1046,7 +840,7 @@ export default function VetoSession({
           {s.phase === "vote" && current && (
             <div className="v-ballot">
               <div className="v-label-row">
-                <span className="v-kicker">
+                <span className="v-kicker" id="v-movie-position">
                   MOVIE {s.index + 1} OF {s.candidates.length}
                 </span>
                 <span className="v-allowance">
@@ -1057,13 +851,15 @@ export default function VetoSession({
                 </span>
               </div>
               <div className="v-panel v-vote-movie">
-                <MovieArtwork key={current.movie.id} movie={current.movie} />
+                <MoviePoster movie={current.movie} className="v-artwork" fallbackClassName="" showFallbackTitle={false} iconSize={30} lazy={false} />
                 <div>
                   <p className="v-kicker">
                     {current.movie.release_date?.slice(0, 4)} ·{" "}
                     {current.movie.runtime} MINUTES
                   </p>
-                  <h2>{current.movie.title}</h2>
+                  <h2 ref={movieHeadingRef} tabIndex={-1} aria-describedby="v-movie-position">
+                    {current.movie.title}
+                  </h2>
                   <p>{current.movie.overview}</p>
                   <CandidateInfo candidate={current} />
                 </div>
@@ -1093,6 +889,11 @@ export default function VetoSession({
                   </button>
                 ))}
               </div>
+              <p className="v-hint">
+                These responses express preference. A newly discovered access,
+                audio, subtitle, or accessibility problem needs a shared review;
+                it does not use your preference veto.
+              </p>
               {conflict && (
                 <div className="v-alert" role="alert">
                   <strong>Your one active veto is already saved.</strong>
@@ -1147,6 +948,9 @@ export default function VetoSession({
                 <button className="v-text" onClick={pause}>
                   Pause this round
                 </button>
+                <button className="v-text" onClick={reviewAccess}>
+                  Access or accessibility issue
+                </button>
               </div>
             </div>
           )}
@@ -1190,14 +994,8 @@ export default function VetoSession({
                   className="v-primary"
                   disabled={s.candidates.some((c) => !s.draft[c.movie.id])}
                   onClick={() => {
-                    update({
-                      ballots: [...s.ballots, { ...s.draft }],
-                      draft: {},
-                      voter: s.voter + 1,
-                      index: 0,
-                      phase: "handoff",
-                      resume: "vote",
-                    });
+                    setSession(submitTurn(s));
+                    setNotice("");
                     setChoice(null);
                   }}
                 >
@@ -1205,6 +1003,9 @@ export default function VetoSession({
                 </button>
                 <button className="v-text" onClick={pause}>
                   Pause this round
+                </button>
+                <button className="v-text" onClick={reviewAccess}>
+                  Access or accessibility issue
                 </button>
               </div>
             </div>
@@ -1255,7 +1056,6 @@ export default function VetoSession({
                           disabled={eligibility(c, s.limits, now).length > 0}
                           onClick={() => {
                             setNow(Date.now());
-                            setAccess(false);
                             update({ chosen: c.movie.id, phase: "confirm" });
                           }}
                         >
@@ -1283,6 +1083,9 @@ export default function VetoSession({
                 <button className="v-text" onClick={() => setRestart("limits")}>
                   Review shared limits
                 </button>
+                <button className="v-text" onClick={() => setRestart("reconsider")}>
+                  Reconsider rejected titles
+                </button>
                 <button
                   className="v-text"
                   onClick={() => update({ phase: "stopped" })}
@@ -1295,7 +1098,7 @@ export default function VetoSession({
 
           {(s.phase === "confirm" || s.phase === "done") && selected && (
             <div className="v-panel v-confirm">
-              <MovieArtwork movie={selected.movie} />
+              <MoviePoster movie={selected.movie} className="v-artwork" fallbackClassName="" showFallbackTitle={false} iconSize={30} lazy={false} />
               <div>
                 <p className="v-kicker">
                   {s.phase === "done"
@@ -1333,24 +1136,10 @@ export default function VetoSession({
                         {reason}
                       </p>
                     ))}
-                    <label className="v-check">
-                      <input
-                        type="checkbox"
-                        checked={access}
-                        onChange={(e) => setAccess(e.target.checked)}
-                      />
-                      <span>
-                        We rechecked this service, audio, subtitles, and no
-                        extra charge.
-                      </span>
-                    </label>
                     <div className="v-actions">
                       <button
                         className="v-primary"
-                        disabled={
-                          !access ||
-                          eligibility(selected, s.limits, now).length > 0
-                        }
+                        disabled={eligibility(selected, s.limits, now).length > 0}
                         onClick={() => confirmChoice(Date.now())}
                       >
                         Confirm our choice <Check size={17} />
@@ -1408,6 +1197,9 @@ export default function VetoSession({
                 <button className="v-text" onClick={() => setRestart("limits")}>
                   Review shared limits
                 </button>
+                <button className="v-text" onClick={() => setRestart("reconsider")}>
+                  Reconsider rejected titles
+                </button>
                 <button
                   className="v-text"
                   onClick={() => update({ phase: "stopped" })}
@@ -1435,104 +1227,7 @@ export default function VetoSession({
         </>
       )}
 
-      {s.phase === "suggest" && movie && (
-        <AccessDialog onClose={() => setMovie(null)}>
-          <button
-            className="v-icon v-dialog-close"
-            onClick={() => setMovie(null)}
-            aria-label="Close access check"
-          >
-            <X size={20} />
-          </button>
-          <p className="v-kicker">CHECK BEFORE ADDING</p>
-          <h2 id="v-access-title">{movie.title}</h2>
-          <p>{movie.overview}</p>
-          <a
-            className="v-text"
-            href={`https://www.themoviedb.org/movie/${movie.id}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            View movie information ↗
-          </a>
-          <div className="v-form-row">
-            <label className="v-field">
-              Runtime in minutes
-              <input
-                type="number"
-                min="1"
-                max="600"
-                value={runtime}
-                onChange={(e) => setRuntime(e.target.value)}
-              />
-            </label>
-            <label className="v-field">
-              Confirmed service
-              <select
-                value={source}
-                onChange={(e) => setSource(Number(e.target.value))}
-              >
-                {s.limits.services.map((id) => (
-                  <option value={id} key={id}>
-                    {serviceName(id)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label className="v-field">
-            Confirmed audio
-            <select value={audio} onChange={(e) => setAudio(e.target.value)}>
-              {s.limits.audioLanguages.map((code) => (
-                <option key={code} value={code}>
-                  {languageName(code)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="v-check">
-            <input
-              type="checkbox"
-              checked={subtitles}
-              onChange={(e) => setSubtitles(e.target.checked)}
-            />
-            <span>English subtitles are available on this service</span>
-          </label>
-          <label className="v-check">
-            <input
-              type="checkbox"
-              checked={access}
-              onChange={(e) => setAccess(e.target.checked)}
-            />
-            <span>
-              I checked playback access and audio on this service, including
-              subtitle needs. There is no extra charge.
-            </span>
-          </label>
-          {reasons
-            .filter((r) => !r.startsWith("Confirm playback"))
-            .map((reason) => (
-              <p className="v-error" key={reason}>
-                {reason}
-              </p>
-            ))}
-          <p className="v-hint">
-            Streaming labels in the sample catalog are illustrative. Verify on
-            the actual service before confirming.
-          </p>
-          <button
-            className="v-primary"
-            disabled={reasons.length > 0}
-            onClick={addCandidate}
-          >
-            {nominating ? "Add my suggestion" : "Add Veto choice"}
-            <Plus size={16} />
-          </button>
-          <button className="v-text" onClick={() => setMovie(null)}>
-            Back to suggestions
-          </button>
-        </AccessDialog>
-      )}
+
     </section>
   );
 }

@@ -1,18 +1,12 @@
-import type {
-  Filters,
-  Genre,
-  Language,
-  Movie,
-  MoviePage,
-  Provider,
+import {
+  DEFAULT_FILTERS,
+  type Catalog,
+  type CatalogMode,
+  type Filters,
+  type Movie,
+  type MoviePage,
 } from "./tmdb";
-
-export type Catalog = {
-  mode: "live" | "demo";
-  genres: Genre[];
-  languages: Language[];
-  providers: Provider[];
-};
+export type { Catalog } from "./tmdb";
 
 /** Browser requests only our own application; TMDB credentials stay on the server. */
 async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
@@ -62,8 +56,14 @@ async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
   return data as T;
 }
 
-export async function fetchCatalog(signal?: AbortSignal): Promise<Catalog> {
-  const data = await request<Catalog>("/api/catalog", signal);
+export async function fetchCatalog(
+  signal?: AbortSignal,
+  mode?: CatalogMode,
+): Promise<Catalog> {
+  const data = await request<Catalog>(
+    `/api/catalog${mode ? `?mode=${mode}` : ""}`,
+    signal,
+  );
   if (
     !["live", "demo"].includes(data.mode) ||
     !Array.isArray(data.genres) ||
@@ -78,8 +78,10 @@ export async function fetchMovies(
   filters: Filters,
   page = 1,
   signal?: AbortSignal,
+  mode?: CatalogMode,
 ): Promise<MoviePage> {
   const params = new URLSearchParams();
+  if (mode) params.set("mode", mode);
   const sortedIds = (ids: number[]) =>
     [...new Set(ids)].sort((a, b) => a - b).join(",");
   if (filters.genres.length) {
@@ -90,7 +92,7 @@ export async function fetchMovies(
   if (filters.runtime) params.set("runtime", filters.runtime);
   if (filters.year) params.set("year", filters.year);
   if (filters.rating) params.set("rating", filters.rating);
-  if (filters.sort !== "popularity.desc") params.set("sort", filters.sort);
+  if (filters.sort !== DEFAULT_FILTERS.sort) params.set("sort", filters.sort);
   if (filters.providers.length)
     params.set("providers", sortedIds(filters.providers));
   if (page !== 1) params.set("page", String(page));
@@ -107,6 +109,10 @@ export async function fetchMovies(
 export function fetchMovieDetails(
   id: number,
   signal?: AbortSignal,
+  mode?: CatalogMode,
 ): Promise<Movie> {
-  return request<Movie>(`/api/movies/${id}`, signal);
+  return request<Movie>(
+    `/api/movies/${id}${mode ? `?mode=${mode}` : ""}`,
+    signal,
+  );
 }

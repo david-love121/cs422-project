@@ -1,0 +1,4 @@
+# Keep research, audits, plans, and agent guidance local.
+*.md
+!/README.md
+/prototype/docs/

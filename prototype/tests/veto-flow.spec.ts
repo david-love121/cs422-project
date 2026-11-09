@@ -24,15 +24,8 @@ async function setup(page: Page) {
 async function addCandidate(page: Page, title: string) {
   await page.getByRole("searchbox", { name: "Find a movie" }).fill(title);
   await page.getByRole("button", { name: new RegExp(`^${escape(title)} \\d{4}`) }).click();
-  const dialog = page.getByRole("dialog", { name: title, exact: true });
-  const add = dialog.getByRole("button", { name: "Add my suggestion", exact: true });
-  await expect(add).toBeDisabled();
-  await dialog.getByLabel("English subtitles are available on this service").check();
-  await expect(add).toBeDisabled();
-  await dialog.getByLabel("I checked playback access and audio on this service, including subtitle needs. There is no extra charge.").check();
-  await expect(add).toBeEnabled();
-  await add.click();
-  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".v-shortlist-item").filter({ hasText: title })).toBeVisible();
 }
 
 async function prepareRound(page: Page) {
@@ -71,7 +64,10 @@ function resultFor(page: Page, title: string) {
 
 test("two viewers nominate, submit covered ballots, respect a hard veto, and confirm a surviving film", async ({ page }, testInfo) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Who’s watching?", exact: true })).toBeVisible();
+  await expect(page.getByText("One shared device · 2–6 viewers", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "A shared choice.", exact: true })).toHaveCount(0);
+  await expect(page.getByText("Set the limits. Suggest a film. Decide together.", { exact: true })).toHaveCount(0);
   await page.screenshot({ path: `/tmp/veto-${testInfo.project.name}-setup.png`, fullPage: true });
   await prepareRound(page);
   await submitTurn(page, ["Veto", "Okay"]);
@@ -91,8 +87,8 @@ test("two viewers nominate, submit covered ballots, respect a hard veto, and con
   await expect(page.getByRole("heading", { name: "One last check, together." })).toBeVisible();
   await expect(page.getByText("Estimated film end", { exact: true })).toBeVisible();
   const confirm = page.getByRole("button", { name: "Confirm our choice" });
-  await expect(confirm).toBeDisabled();
-  await page.getByLabel("We rechecked this service, audio, subtitles, and no extra charge.").check();
+  await expect(confirm).toBeEnabled();
+  await expect(page.locator(".v-confirm input[type=checkbox]")).toHaveCount(0);
   await confirm.click();
   await expect(page.getByRole("heading", { name: "Your evening is decided." })).toBeVisible();
   await expect(page.getByText(/Decision recorded\. Open Netflix yourselves/)).toBeVisible();
@@ -185,14 +181,158 @@ test("confirmation rechecks the actual time before recording a choice even when 
   await submitTurn(page, ["Okay", "Okay"]);
   await page.getByRole("button", { name: "Show group results" }).click();
   await resultFor(page, SECOND).getByRole("button", { name: `Choose ${SECOND}`, exact: true }).click();
-  await page.getByLabel("We rechecked this service, audio, subtitles, and no extra charge.").check();
   const confirm = page.getByRole("button", { name: "Confirm our choice" });
+  // Freeze refresh timers while the film still fits, so the displayed window
+  // remains stale throughout the subsequent click's scrolling/stability checks.
+  await page.clock.pauseAt(new Date("2026-11-05T20:01:00Z"));
   await expect(confirm).toBeEnabled();
-  // Move wall-clock time without triggering the 15-second display refresh.
+  // Move wall-clock time without triggering the frozen 15-second refresh.
   await page.clock.setSystemTime(new Date("2026-11-05T21:30:00Z"));
   await confirm.click();
   await expect(page.getByRole("heading", { name: "One last check, together." })).toBeVisible();
   await expect(page.getByText("This movie no longer meets the shared limits. Return to results and choose a shorter option.", { exact: true })).toBeVisible();
   await expect(confirm).toBeDisabled();
   await expect(page.getByRole("heading", { name: "Your evening is decided." })).toHaveCount(0);
+});
+
+test("fresh-round recovery excludes objections while deliberate reconsideration releases them", async ({ page }) => {
+  const deadline = await prepareRound(page);
+  await submitTurn(page, ["Veto", "Okay"]);
+  await submitTurn(page, ["Okay", "Okay"]);
+  await page.getByRole("button", { name: "Show group results" }).click();
+  await page.getByRole("button", { name: "Try another set", exact: true }).click();
+  const agreement = page.getByRole("region", { name: "Fresh round agreement" });
+  await expect(agreement).toContainText("Films without an objection may be suggested again.");
+  await agreement.getByRole("button", { name: "Agree to a fresh round", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^Soul \d{4}/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^The Grand Budapest Hotel \d{4}/ })).toBeVisible();
+  await page.getByRole("button", { name: "Reconsider rejected titles", exact: true }).click();
+  await expect(agreement).toContainText("Previously rejected titles may be suggested again by agreement.");
+  await agreement.getByRole("button", { name: "Keep this round", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^Soul \d{4}/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Reconsider rejected titles", exact: true }).click();
+  await agreement.getByRole("button", { name: "Agree to reconsider in a fresh round", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^Soul \d{4}/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Alex, add your suggestion." })).toBeFocused();
+  await page.getByRole("button", { name: "Review shared limits", exact: true }).click();
+  await page.getByRole("button", { name: "Agree to a fresh round", exact: true }).click();
+  await expect(page.getByLabel("Movie must end by", { exact: true })).toHaveValue(deadline);
+  await expect(page.getByLabel("Require English subtitles for every movie")).toBeChecked();
+});
+
+test("nomination and keyboard voting focus announce the new viewer and movie", async ({ page }) => {
+  await setup(page);
+  await addCandidate(page, FIRST);
+  await expect(page.getByRole("heading", { name: "Sam, add your suggestion." })).toBeFocused();
+  await addCandidate(page, SECOND);
+  await page.getByRole("button", { name: "Start private voting" }).click();
+  await beginTurn(page);
+  await expect(page.getByRole("heading", { name: FIRST, exact: true })).toBeFocused();
+  const okay = page.getByRole("group", { name: "Your response" }).getByRole("button", { name: /^Okay / });
+  await okay.focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Save & next" }).focus();
+  await page.keyboard.press("Enter");
+  const nextHeading = page.getByRole("heading", { name: SECOND, exact: true });
+  await expect(nextHeading).toBeFocused();
+  await expect(nextHeading).toHaveAttribute("aria-describedby", "v-movie-position");
+  await expect(page.locator("#v-movie-position")).toHaveText("MOVIE 2 OF 2");
+});
+
+test("a saved film with unknown metadata is nominated immediately using prototype defaults", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("movie-night-shortlist-v1", JSON.stringify([{
+      id: 9000001, title: "Prototype film", original_language: "ja", genre_ids: [],
+      release_date: "2024-01-01", overview: "An idea with incomplete catalog data.",
+    }]));
+  });
+  await setup(page);
+  await page.getByRole("searchbox", { name: "Find a movie" }).fill("Prototype film");
+  await page.getByRole("button", { name: /^Prototype film 2024/ }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const added = page.locator(".v-shortlist-item").filter({ hasText: "Prototype film" });
+  await expect(added).toContainText("120 min");
+  await expect(added).toContainText("Netflix");
+  await expect(added).toContainText("English audio");
+  await expect(added).toContainText("English subtitles assumed");
+  await expect(added).toContainText("Prototype access assumptions");
+  await expect(page.getByRole("heading", { name: "Sam, add your suggestion." })).toBeFocused();
+});
+
+test("ineligible proposals and a private access review never spend a preference veto", async ({ page }) => {
+  await setup(page);
+  for (const title of ["Interstellar", "Oppenheimer"]) {
+    // These known runtimes exceed the short viewing window; access is assumed.
+    if (title === "Interstellar") {
+      await page.getByRole("button", { name: "Review shared limits", exact: true }).click();
+      await page.getByRole("button", { name: "Agree to a fresh round", exact: true }).click();
+      const deadline = new Date(Date.now() + 150 * 60_000);
+      const local = new Date(deadline.getTime() - deadline.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+      await page.getByLabel("Movie must end by", { exact: true }).fill(local);
+      await page.getByRole("button", { name: "Continue to suggestions", exact: true }).click();
+    }
+    await page.getByRole("searchbox", { name: "Find a movie" }).fill(title);
+    await page.getByRole("button", { name: new RegExp(`^${escape(title)} \\d{4}`) }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    const reason = page.getByRole("alert").filter({ hasText: title });
+    await expect(reason).toContainText(title);
+    await expect(reason).toContainText("runtime exceeds");
+    await expect(page.locator(".v-shortlist-item")).toHaveCount(0);
+  }
+  await addCandidate(page, FIRST);
+  await addCandidate(page, SECOND);
+  await page.getByRole("button", { name: "Start private voting" }).click();
+  await beginTurn(page);
+  await expect(page.getByText("1 veto remaining", { exact: true })).toBeVisible();
+  await answer(page, "Veto");
+  await page.getByRole("button", { name: "Access or accessibility issue", exact: true }).click();
+  const agreement = page.getByRole("region", { name: "Fresh round agreement" });
+  await expect(agreement).toBeVisible();
+  await expect(page.getByText(FIRST, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(SECOND, { exact: true })).toHaveCount(0);
+  await agreement.getByRole("button", { name: "Keep this round", exact: true }).click();
+  await page.getByRole("button", { name: "Resume private turn", exact: true }).click();
+  await beginTurn(page);
+  await expect(page.getByText("0 veto remaining", { exact: true })).toBeVisible();
+  await answer(page, "Okay");
+  await expect(page.locator(".v-review-row").filter({ hasText: FIRST })).toContainText("Veto");
+  await expect(page.locator(".v-review-row").filter({ hasText: SECOND })).toContainText("Okay");
+  await page.getByRole("button", { name: "Access or accessibility issue", exact: true }).click();
+  await agreement.getByRole("button", { name: "Agree to a fresh round", exact: true }).click();
+  await expect(page.getByLabel("Require English subtitles for every movie")).toBeChecked();
+  await page.getByRole("button", { name: "Continue to suggestions", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^Soul \d{4}/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^The Grand Budapest Hotel \d{4}/ })).toBeVisible();
+});
+
+test("three desktop viewers and six mobile viewers complete larger rounds with truthful totals", async ({ page, isMobile }) => {
+  test.setTimeout(60_000);
+  const viewers = isMobile ? 6 : 3;
+  const titles = [FIRST, SECOND, "Fantastic Mr. Fox", "Interstellar", "Taxi Driver", "Transformers"].slice(0, viewers);
+  await page.goto("/");
+  await page.getByLabel("Number of viewers").selectOption(String(viewers));
+  await page.getByRole("button", { name: "Continue to suggestions", exact: true }).click();
+  for (const title of titles) {
+    await page.getByRole("searchbox", { name: "Find a movie" }).fill(title);
+    await page.getByRole("button", { name: new RegExp(`^${escape(title)} \\d{4}`) }).click();
+    await expect(page.locator(".v-shortlist-item").filter({ hasText: title })).toBeVisible();
+  }
+  await page.getByRole("button", { name: "Start private voting", exact: true }).click();
+  for (let viewer = 0; viewer < viewers; viewer += 1) {
+    await beginTurn(page);
+    for (let index = 0; index < titles.length; index += 1) await answer(page, "Okay");
+    await page.getByRole("button", { name: "Finish my turn", exact: true }).click();
+    await expect(page.getByText("RESPONSES COVERED", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: FIRST, exact: true })).toHaveCount(0);
+  }
+  await page.getByRole("button", { name: "Show group results", exact: true }).click();
+  for (const title of titles) {
+    await expect(resultFor(page, title).locator(".v-counts > div")).toHaveText([
+      "0Really Want", `${viewers}Okay`, "0Prefer another", "0Veto",
+    ]);
+  }
+  await expectNoOverflow(page);
+  await resultFor(page, FIRST).getByRole("button", { name: `Choose ${FIRST}`, exact: true }).click();
+  await page.getByRole("button", { name: "Confirm our choice", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Your evening is decided." })).toBeVisible();
 });

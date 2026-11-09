@@ -1,4 +1,16 @@
-import { DEFAULT_FILTERS, MOVIE_SORTS, type Filters } from "../tmdb";
+import {
+  GENRE_MODES,
+  MAX_FILTER_IDS,
+  RATING_VALUES,
+  RUNTIME_VALUES,
+  YEAR_VALUES,
+} from "../catalog";
+import {
+  DEFAULT_FILTERS,
+  MOVIE_SORTS,
+  type CatalogMode,
+  type Filters,
+} from "../tmdb";
 
 export class ApiError extends Error {
   constructor(
@@ -38,7 +50,7 @@ function invalid(name: string): never {
 function ids(value: string, name: string): number[] {
   if (!value) return [];
   const parts = value.split(",");
-  if (parts.length > 20) invalid(name);
+  if (parts.length > MAX_FILTER_IDS) invalid(name);
   const numbers = parts.map((part) => {
     if (!/^[1-9]\d{0,9}$/.test(part)) invalid(name);
     const id = Number(part);
@@ -55,6 +67,22 @@ function choice(
 ): string {
   if (!options.includes(value)) invalid(name);
   return value;
+}
+
+/** Consume the optional mode independently of each endpoint's remaining query. */
+export function parseCatalogMode(search: URLSearchParams): {
+  mode: CatalogMode | undefined;
+  search: URLSearchParams;
+} {
+  const remaining = new URLSearchParams(search);
+  const modes = remaining.getAll("mode");
+  if (
+    modes.length > 1 ||
+    (modes.length === 1 && !["demo", "live"].includes(modes[0]))
+  )
+    throw new ApiError("Invalid catalog mode.", 400);
+  remaining.delete("mode");
+  return { mode: modes[0] as CatalogMode | undefined, search: remaining };
 }
 
 export function parseMovieQuery(search: URLSearchParams): {
@@ -81,21 +109,21 @@ export function parseMovieQuery(search: URLSearchParams): {
       genres: ids(search.get("genres") ?? "", "genres"),
       genreMode: choice(
         search.get("genreMode") ?? "any",
-        ["any", "all"],
+        GENRE_MODES,
         "genre mode",
       ) as "any" | "all",
       language,
       runtime: choice(
         search.get("runtime") ?? "",
-        ["", "short", "medium", "long", "epic"],
+        RUNTIME_VALUES,
         "runtime",
       ),
       year: choice(
         search.get("year") ?? "",
-        ["", "classic", "1990", "2000", "2010", "2020"],
+        YEAR_VALUES,
         "year",
       ),
-      rating: choice(search.get("rating") ?? "", ["", "6", "7", "8"], "rating"),
+      rating: choice(search.get("rating") ?? "", RATING_VALUES, "rating"),
       sort,
       providers: ids(search.get("providers") ?? "", "providers"),
     },

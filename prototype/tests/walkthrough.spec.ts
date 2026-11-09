@@ -46,7 +46,7 @@ test("the automated five-viewer demo reaches three survivors without overwriting
   const demo = page.getByRole("region", { name: "Guided demo", exact: true });
   await expect(demo).toBeVisible();
   // Leo's review fades into an eight-second veil while real voting accelerates behind it.
-  await page.clock.runFor(57_500);
+  await page.clock.runFor(52_500);
   const transition = page.getByRole("region", { name: "Voting transition", exact: true });
   await expect(transition).toBeVisible();
   await expect(transition.getByRole("heading", { name: "Simulated voting continues...", exact: true })).toBeVisible();
@@ -59,8 +59,17 @@ test("the automated five-viewer demo reaches three survivors without overwriting
     await expect(page.locator('.demo-skip-dots [data-visible="true"]')).toHaveCount(dots);
     await expect(transition).toBeVisible();
   }
-  await page.clock.runFor(5500);
+  await page.clock.runFor(1200);
+  await expect(transition).toHaveAttribute("data-completed", "4");
+  await expect(page.locator(".v-vote-movie h2")).toHaveText("The Tomorrow War");
+  await expect(page.locator('[data-demo-response="prefer"]')).toHaveAttribute("aria-pressed", "true");
+  await page.clock.runFor(1200);
   await expect(page.getByRole("region", { name: "Voting transition", exact: true })).toHaveCount(0);
+  await expect(page.locator(".v-vote-movie h2")).toHaveText("Jaane Jaan");
+  await expect(page.locator('[data-demo="save-response"]')).toBeDisabled();
+  await page.clock.runFor(1600);
+  await expect(page.locator('[data-demo-response="okay"]')).toHaveAttribute("aria-pressed", "true");
+  await page.clock.runFor(6500);
   await expect(page.locator(".v-results-note")).toContainText("5 completed ballots");
   await expect(page.locator(".v-result")).toHaveCount(5);
   await expect(page.locator(".v-result.is-favorite")).toContainText("Glass Onion: A Knives Out Mystery");
@@ -92,7 +101,7 @@ test("pause, resume, replay, and exit control the walkthrough", async ({ page })
   await page.goto("/");
   const menu = await openMenu(page);
   await menu.getByRole("menuitem", { name: "Start demo", exact: true }).click();
-  await page.clock.runFor(59_500);
+  await page.clock.runFor(54_500);
   await expect(page.getByRole("region", { name: "Voting transition", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Pause demo", exact: true }).click();
   const transition = page.locator(".demo-skip");

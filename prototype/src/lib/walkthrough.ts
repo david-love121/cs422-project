@@ -52,12 +52,12 @@ export function walkthroughSteps(): Step[] {
   DEMO_FILMS.forEach((movie, index) => {
     caption = { chapter: 1, title: `${DEMO_PARTY[index]} brings a suggestion.`, detail: `${movie.title}. Each person gets the same chance to contribute.` };
     add("type", target("search"), 1600, movie.title);
-    add("click", `[data-demo-movie="${movie.id}"]`, 2240);
+    add("click", `[data-demo-movie="${movie.id}"]`, 1840);
   });
   caption = { chapter: 1, title: "Five suggestions. Equal say.", detail: "The same five movies go to every viewer, one private turn at a time." };
   add("click", target("start-voting"), 1500);
   caption = { chapter: 2, title: "Maya’s private turn.", detail: "Really Want, Okay, Prefer another, or Veto. Select first, then save." };
-  add("click", target("begin-turn"), 1700);
+  add("click", target("begin-turn"), 1500);
   DEMO_BALLOTS[0].forEach((response, movie) => {
     caption = {
       chapter: 2,
@@ -68,23 +68,32 @@ export function walkthroughSteps(): Step[] {
           : RESPONSE_OPTIONS.find((option) => option.value === response)!.label}`,
     };
     if (movie === 0) add("click", '[data-demo-response="okay"]', 800);
-    add("click", `[data-demo-response="${response}"]`, 1100);
-    add("click", target("save-response"), 900);
+    add("click", `[data-demo-response="${response}"]`, 1000);
+    add("click", target("save-response"), 800);
   });
   caption = { chapter: 2, title: "Maya reviews, then hands over.", detail: "Saved responses can be corrected before submitting the complete ballot." };
-  add("look", ".v-review-row", 2000);
-  add("click", target("finish-turn"), 1500);
+  add("look", ".v-review-row", 1700);
+  add("click", target("finish-turn"), 1200);
   caption = { chapter: 2, title: "Leo’s private turn.", detail: "A new viewer gets the same five movies, with their own responses and veto." };
   add("click", target("begin-turn"), 1500);
   DEMO_BALLOTS[1].forEach((response, movie) => {
     caption = { chapter: 2, title: `Leo’s turn · ${movie + 1} of 5`, detail: `${DEMO_FILMS[movie].title} · ${RESPONSE_OPTIONS.find((option) => option.value === response)!.label}` };
-    add("click", `[data-demo-response="${response}"]`, 600);
-    add("click", target("save-response"), 600);
+    add("click", `[data-demo-response="${response}"]`, 500);
+    add("click", target("save-response"), 500);
   });
   caption = { chapter: 2, title: "Leo reviews his responses.", detail: "The second turn ends the same way: review, submit, and cover the ballot." };
   add("look", ".v-review-row", 800);
   caption = { chapter: 2, title: "The remaining private turns.", detail: "Leo submits his review. Voting speeds up behind the overlay as Priya, Sam, and Alex have their say." };
   add("skip-votes", undefined, 8000);
+  caption = { chapter: 2, title: "Back for the final responses.", detail: "Alex saves his fourth response. The last movie gets the same care as the first." };
+  add("click", target("save-response"), 700);
+  caption = { chapter: 2, title: "Alex’s final movie · 5 of 5", detail: `${DEMO_FILMS[4].title} · Okay. Select the response, then save it.` };
+  add("look", ".v-vote-movie", 800);
+  add("click", `[data-demo-response="${DEMO_BALLOTS[4][4]}"]`, 1100);
+  add("click", target("save-response"), 1000);
+  caption = { chapter: 2, title: "The last review. Everyone has had a say.", detail: "Alex checks his saved responses and submits the fifth complete ballot." };
+  add("look", ".v-review-row", 700);
+  add("click", target("finish-turn"), 500);
 
   caption = { chapter: 3, title: "Five voices. A clear result.", detail: "All five ballots count. Now there’s time to compare what survived, and why." };
   add("click", target("show-results"), 2000);
@@ -202,7 +211,7 @@ export async function runWalkthrough({
         await click(target("finish-turn"), 100);
         onTransition({ completed: 2, startedAt });
         await wait(350);
-        for (let viewer = 2; viewer < DEMO_BALLOTS.length; viewer++) {
+        for (let viewer = 2; viewer < DEMO_BALLOTS.length - 1; viewer++) {
           // Keep the real ballot visible behind the veil, accelerating each turn.
           const delay = 165 - (viewer - 2) * 40;
           await click(target("begin-turn"), delay);
@@ -216,11 +225,18 @@ export async function runWalkthrough({
           onTransition({ completed: viewer + 1, startedAt });
           await wait(350);
         }
-        const ready = await find(target("show-results"));
-        ready.scrollIntoView({ behavior: "instant", block: "center" });
+        // Reveal Alex's fourth response, leaving his last movie and review visible.
+        await click(target("begin-turn"), 85);
+        (await find(".v-vote-movie")).scrollIntoView({ behavior: "instant", block: "center" });
+        for (const response of DEMO_BALLOTS[4].slice(0, 3)) {
+          await click(`[data-demo-response="${response}"]`, 85);
+          await click(target("save-response"), 85);
+        }
+        await click(`[data-demo-response="${DEMO_BALLOTS[4][3]}"]`, 85);
+        (await find(".v-vote-movie")).scrollIntoView({ behavior: "instant", block: "center" });
         const fade = reducedMotion ? 32 : 650;
         await wait(startedAt + step.weight - clock() - fade);
-        onTransition({ completed: DEMO_PARTY.length, startedAt, leaving: true });
+        onTransition({ completed: DEMO_PARTY.length - 1, startedAt, leaving: true });
         await wait(fade);
         onTransition(null);
       } else if (step.selector) {

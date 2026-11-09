@@ -170,7 +170,7 @@ svg {
   place-items: center;
   font-size: 10px;
 }
-.connection-button {
+.catalog-status {
   margin-left: auto;
   display: flex;
   align-items: center;
@@ -183,9 +183,6 @@ svg {
   font-weight: 500;
   min-height: 39px;
   white-space: nowrap;
-}
-.connection-button:hover {
-  background: #e9ece4;
 }
 .status-dot {
   width: 6px;
@@ -1301,13 +1298,13 @@ h1 {
   .main-nav > button {
     font-size: 12px;
   }
-  .connection-button {
+  .catalog-status {
     font-size: 10px;
     padding: 9px 10px;
     gap: 6px;
     min-height: 36px;
   }
-  .connection-button > svg {
+  .catalog-status > svg {
     display: none;
   }
   .nav-count {

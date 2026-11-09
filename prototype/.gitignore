@@ -8,5 +8,5 @@ test-results/
 playwright-report/
 .DS_Store
 .direnv/
-
 .vercel/
+.vercel

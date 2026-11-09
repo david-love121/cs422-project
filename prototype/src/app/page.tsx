@@ -13,7 +13,6 @@ import {
   Film,
   Globe2,
   Heart,
-  LoaderCircle,
   RotateCcw,
   Search,
   SlidersHorizontal,
@@ -23,10 +22,6 @@ import {
 } from "lucide-react";
 import {
   DEFAULT_FILTERS,
-  fetchMetadata,
-  fetchMovies,
-  fetchMovieDetails,
-  fetchProviders,
   imageUrl,
   type Filters,
   type Genre,
@@ -35,13 +30,12 @@ import {
   type Provider,
 } from "@/lib/tmdb";
 import {
-  DEMO_GENRES,
-  DEMO_LANGUAGES,
-  DEMO_PROVIDERS,
-  filterDemoMovies,
-} from "@/lib/demo";
+  fetchCatalog,
+  fetchMovies,
+  fetchMovieDetails,
+  type Catalog,
+} from "@/lib/tmdb-client";
 
-const TOKEN_KEY = "movie-night-tmdb-token";
 const SAVED_KEY = "movie-night-shortlist-v1";
 const RUNTIME_OPTIONS = [
   ["", "Any length"],
@@ -405,14 +399,14 @@ function FilterPanel({
 
 export default function Home() {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [genres, setGenres] = useState<Genre[]>(DEMO_GENRES);
-  const [languages, setLanguages] = useState<Language[]>(DEMO_LANGUAGES);
-  const [providers, setProviders] = useState<Provider[]>(DEMO_PROVIDERS);
-  const [token, setToken] = useState("");
-  const [tokenInput, setTokenInput] = useState("");
-  const [connecting, setConnecting] = useState(false);
-  const [connectionError, setConnectionError] = useState("");
-  const [connectionOpen, setConnectionOpen] = useState(false);
+  const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [catalogError, setCatalogError] = useState("");
+  const [catalogRetry, setCatalogRetry] = useState(0);
+  const genres = catalog?.genres ?? [];
+  const languages = catalog?.languages ?? [];
+  const providers = catalog?.providers ?? [];
+  const isLive = catalog?.mode === "live";
+  const isDemo = catalog?.mode === "demo";
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [saved, setSaved] = useState<Movie[]>([]);
   const [storageReady, setStorageReady] = useState(false);
@@ -428,7 +422,7 @@ export default function Home() {
     pages: number;
     loading: boolean;
     error: string;
-  }>({ movies: [], total: 0, pages: 0, loading: false, error: "" });
+  }>({ movies: [], total: 0, pages: 0, loading: true, error: "" });
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [detail, setDetail] = useState<{
     movie: Movie | null;
@@ -436,7 +430,6 @@ export default function Home() {
     error: string;
   }>({ movie: null, loading: false, error: "" });
   const resultsRef = useRef<HTMLElement>(null);
-  const connectController = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -463,7 +456,7 @@ export default function Home() {
         );
       }
       try {
-        setToken(sessionStorage.getItem(TOKEN_KEY) || "");
+        sessionStorage.removeItem("movie-night-tmdb-token");
       } catch {
         /* Session storage is optional. */
       }
@@ -482,37 +475,29 @@ export default function Home() {
   }, [saved, storageReady]);
 
   useEffect(() => {
-    if (!token) return;
     const controller = new AbortController();
-    Promise.all([
-      fetchMetadata(token, controller.signal),
-      fetchProviders(token, controller.signal),
-    ])
-      .then(([metadata, providerList]) => {
-        if (!controller.signal.aborted) {
-          setGenres(metadata.genres);
-          setLanguages(metadata.languages);
-          setProviders(providerList);
-        }
+    fetchCatalog(controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted) setCatalog(data);
       })
-      .catch(() => {
-        /* Discovery reports connection errors with a retry action. */
+      .catch((error) => {
+        if (!controller.signal.aborted)
+          setCatalogError(
+            error instanceof Error
+              ? error.message
+              : "Couldn’t load movie preferences. Please try again.",
+          );
       });
     return () => controller.abort();
-  }, [token]);
+  }, [catalogRetry]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!catalog) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       setLive((previous) => ({ ...previous, loading: true, error: "" }));
       try {
-        const response = await fetchMovies(
-          token,
-          filters,
-          page,
-          controller.signal,
-        );
+        const response = await fetchMovies(filters, page, controller.signal);
         if (!controller.signal.aborted)
           setLive({
             movies: response.results,
@@ -539,12 +524,12 @@ export default function Home() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [token, filters, page, retry]);
+  }, [catalog, filters, page, retry]);
 
   useEffect(() => {
-    if (!selectedMovie || !token) return;
+    if (!selectedMovie) return;
     const controller = new AbortController();
-    fetchMovieDetails(token, selectedMovie.id, controller.signal)
+    fetchMovieDetails(selectedMovie.id, controller.signal)
       .then((movie) => {
         if (!controller.signal.aborted)
           setDetail({ movie, loading: false, error: "" });
@@ -559,19 +544,13 @@ export default function Home() {
           });
       });
     return () => controller.abort();
-  }, [selectedMovie, token]);
+  }, [selectedMovie]);
 
-  const demoMovies = filterDemoMovies(filters);
-  const movies =
-    view === "shortlist" ? saved : token ? live.movies : demoMovies;
-  const total =
-    view === "shortlist"
-      ? saved.length
-      : token
-        ? live.total
-        : demoMovies.length;
-  const loading = view === "explore" && !!token && live.loading;
-  const error = view === "explore" && !!token ? live.error : "";
+  const movies = view === "shortlist" ? saved : live.movies;
+  const total = view === "shortlist" ? saved.length : live.total;
+  const loading =
+    view === "explore" && !catalogError && (!catalog || live.loading);
+  const error = view === "explore" ? catalogError || live.error : "";
   const filterCount =
     filters.genres.length +
     filters.providers.length +
@@ -585,7 +564,7 @@ export default function Home() {
     if (JSON.stringify(value) === JSON.stringify(filters)) return;
     setFilters(value);
     setPage(1);
-    if (token) setLive((previous) => ({ ...previous, loading: true }));
+    setLive((previous) => ({ ...previous, loading: true }));
   }
   function toggleSaved(movie: Movie) {
     setSaved((current) =>
@@ -596,71 +575,19 @@ export default function Home() {
   }
   function openMovie(movie: Movie) {
     setSelectedMovie(movie);
-    setDetail({ movie: null, loading: !!token, error: "" });
+    setDetail({ movie: null, loading: true, error: "" });
   }
   function switchView(nextView: "session" | "explore" | "shortlist") {
     setView(nextView);
   }
-  function closeConnection() {
-    connectController.current?.abort();
-    setConnecting(false);
-    setConnectionOpen(false);
-  }
-  async function connect(event: React.FormEvent) {
-    event.preventDefault();
-    const value = tokenInput.trim().replace(/^Bearer\s+/i, "");
-    if (!value) {
-      setConnectionError("Paste your TMDB read token or API key to connect.");
-      return;
+  function retryCollection() {
+    if (!catalog) {
+      setCatalogError("");
+      setCatalogRetry((value) => value + 1);
+    } else {
+      setLive((previous) => ({ ...previous, loading: true, error: "" }));
+      setRetry((value) => value + 1);
     }
-    setConnecting(true);
-    setConnectionError("");
-    const controller = new AbortController();
-    connectController.current = controller;
-    try {
-      const [metadata, providerList] = await Promise.all([
-        fetchMetadata(value, controller.signal),
-        fetchProviders(value, controller.signal),
-      ]);
-      if (controller.signal.aborted) return;
-      setGenres(metadata.genres);
-      setLanguages(metadata.languages);
-      setProviders(providerList);
-      try {
-        sessionStorage.setItem(TOKEN_KEY, value);
-      } catch {
-        /* Token can remain in memory. */
-      }
-      setLive({ movies: [], total: 0, pages: 0, loading: true, error: "" });
-      setToken(value);
-      setPage(1);
-      setRetry((previous) => previous + 1);
-      setTokenInput("");
-      setConnectionOpen(false);
-    } catch (error) {
-      if (!controller.signal.aborted)
-        setConnectionError(
-          error instanceof Error ? error.message : "Couldn’t connect to TMDB.",
-        );
-    } finally {
-      if (!controller.signal.aborted) setConnecting(false);
-    }
-  }
-  function disconnect() {
-    connectController.current?.abort();
-    try {
-      sessionStorage.removeItem(TOKEN_KEY);
-    } catch {
-      /* No stored credential to clear. */
-    }
-    setToken("");
-    setGenres(DEMO_GENRES);
-    setLanguages(DEMO_LANGUAGES);
-    setProviders(DEMO_PROVIDERS);
-    setFilters(DEFAULT_FILTERS);
-    setPage(1);
-    setConnectionOpen(false);
-    setConnectionError("");
   }
   const filterPanel = (
     <FilterPanel
@@ -717,17 +644,21 @@ export default function Home() {
             </button>
           </nav>
           {view !== "session" && (
-            <button
-              className={`connection-button ${token ? "connected" : ""}`}
-              onClick={() => {
-                setConnectionError("");
-                setConnectionOpen(true);
-              }}
+            <div
+              className={`catalog-status ${isLive ? "connected" : ""}`}
+              role="status"
             >
               <span className="status-dot" />
-              <span>{token ? "TMDB connected" : "Connect TMDB"}</span>
-              <ArrowRight size={14} />
-            </button>
+              <span>
+                {catalog
+                  ? isLive
+                    ? "Live collection"
+                    : "Sample collection"
+                  : catalogError
+                    ? "Collection unavailable"
+                    : "Loading collection…"}
+              </span>
+            </div>
           )}
         </div>
       </header>
@@ -759,27 +690,29 @@ export default function Home() {
               </button>
             </section>
 
-            <div className={`collection-banner ${token ? "live-banner" : ""}`}>
+            <div className={`collection-banner ${isLive ? "live-banner" : ""}`}>
               <span className="banner-icon">
                 <Globe2 size={17} />
               </span>
               <p>
-                {token ? (
+                {isLive ? (
                   <>
                     <strong>You’re exploring TMDB.</strong> Live movies and
-                    streaming services, fetched on your device.
+                    streaming services for your group.
+                  </>
+                ) : isDemo ? (
+                  <>
+                    <strong>Sample collection.</strong> Explore prepared movie
+                    records for your group.
                   </>
                 ) : (
-                  <>
-                    <strong>Sample collection.</strong> Explore the local movie
-                    records, or connect TMDB for live results.
-                  </>
+                  <strong>
+                    {catalogError
+                      ? "Collection unavailable."
+                      : "Loading collection…"}
+                  </strong>
                 )}
               </p>
-              <button onClick={() => setConnectionOpen(true)}>
-                {token ? "Connection settings" : "Connect TMDB"}
-                <ArrowRight size={14} />
-              </button>
             </div>
 
             <div
@@ -817,7 +750,7 @@ export default function Home() {
                     <p className="results-description">
                       {view === "shortlist"
                         ? "Saved ideas are available for nominations in Decide together."
-                        : token
+                        : isLive
                           ? "Live catalog results matching your filters."
                           : "Real movie records in a local sample collection."}
                     </p>
@@ -855,7 +788,11 @@ export default function Home() {
                       Filters {filterCount > 0 && <span>{filterCount}</span>}
                     </button>
                     <span>
-                      {token ? "Live TMDB results" : "Sample collection"} · USA
+                      {catalog
+                        ? isLive
+                          ? "Live TMDB results"
+                          : "Sample collection"
+                        : "Collection unavailable"} · USA
                     </span>
                   </div>
                 )}
@@ -958,13 +895,13 @@ export default function Home() {
                     </button>
                   </div>
                 )}
-                {!token &&
+                {isDemo &&
                   filters.providers.length > 0 &&
                   view === "explore" && (
                     <p className="sample-availability">
                       <Tv size={14} />
-                      Sample service assignments only. Connect TMDB to check
-                      current US availability.
+                      Sample service assignments only. Check current access
+                      in your streaming service before nominating a movie.
                     </p>
                   )}
                 {storageNote && <p className="field-hint">{storageNote}</p>}
@@ -994,22 +931,11 @@ export default function Home() {
                     <div className="empty-actions">
                       <button
                         className="primary-button"
-                        onClick={() => {
-                          setLive((previous) => ({
-                            ...previous,
-                            loading: true,
-                          }));
-                          setRetry((value) => value + 1);
-                        }}
+                        onClick={retryCollection}
                       >
                         Try again
                       </button>
-                      <button
-                        className="secondary-button"
-                        onClick={() => setConnectionOpen(true)}
-                      >
-                        Connection settings
-                      </button>
+
                     </div>
                   </div>
                 ) : movies.length === 0 ? (
@@ -1023,9 +949,9 @@ export default function Home() {
                     <p>
                       {view === "shortlist"
                         ? "Save a movie from Explore to make it available for nominations."
-                        : token
+                        : isLive
                           ? "Try fewer filters or a different genre."
-                          : "Try fewer filters, or connect TMDB to explore beyond this sample collection."}
+                          : "Try fewer filters in this sample collection."}
                     </p>
                     <button
                       className="primary-button"
@@ -1123,7 +1049,6 @@ export default function Home() {
                 )}
                 {!loading &&
                   !error &&
-                  token &&
                   view === "explore" &&
                   live.pages > 1 && (
                     <div className="pagination">
@@ -1165,17 +1090,14 @@ export default function Home() {
                       </button>
                     </div>
                   )}
-                {!token && view === "explore" && movies.length > 0 && (
+                {isDemo && view === "explore" && movies.length > 0 && (
                   <div className="collection-end">
                     <span />
                     <Film size={18} />
                     <span />
                     <p>
                       End of the sample collection.
-                      <button onClick={() => setConnectionOpen(true)}>
-                        Explore the full TMDB collection{" "}
-                        <ArrowRight size={13} />
-                      </button>
+
                     </p>
                   </div>
                 )}
@@ -1222,7 +1144,7 @@ export default function Home() {
               JustWatch
             </a>
             . US catalog.{" "}
-            {token
+            {isLive
               ? "Availability can change."
               : "Sample movies and service assignments are for demonstration."}
           </p>
@@ -1247,91 +1169,6 @@ export default function Home() {
             Show movies
             <ArrowRight size={17} />
           </button>
-        </Modal>
-      )}
-      {connectionOpen && (
-        <Modal
-          title="Connect to TMDB"
-          onClose={closeConnection}
-          className="connection-modal"
-        >
-          <div className="modal-symbol">
-            <Globe2 size={25} />
-          </div>
-          <div className="eyebrow small">LIVE MOVIE DATA</div>
-          <h2 className="modal-title">Connect to TMDB</h2>
-          <p className="modal-intro">
-            Browse live movie information and US streaming listings from TMDB.
-          </p>
-          <form onSubmit={connect}>
-            <label className="token-label">
-              TMDB read token or API key
-              <input
-                type="password"
-                autoComplete="off"
-                spellCheck={false}
-                value={tokenInput}
-                onChange={(event) => setTokenInput(event.target.value)}
-                placeholder="Paste your read access token"
-              />
-            </label>
-            <p className="token-help">
-              Find your <strong>API Read Access Token</strong> in{" "}
-              <a
-                href="https://www.themoviedb.org/settings/api"
-                target="_blank"
-                rel="noreferrer"
-              >
-                TMDB API settings <ExternalLink size={12} />
-              </a>
-              .
-            </p>
-            <div className="connection-note">
-              <Globe2 size={17} />
-              <p>
-                Your device calls TMDB directly. Your token stays in this
-                browser tab’s session and is visible to its browser code. It is
-                never sent to our server.
-              </p>
-            </div>
-            {connectionError && (
-              <p className="form-error" role="alert">
-                {connectionError}
-              </p>
-            )}
-            <button
-              className="primary-button connect-submit"
-              disabled={connecting}
-              type="submit"
-            >
-              {connecting ? (
-                <>
-                  <LoaderCircle size={16} className="spin" />
-                  Connecting…
-                </>
-              ) : (
-                <>
-                  Connect
-                  <ArrowRight size={16} />
-                </>
-              )}
-            </button>
-          </form>
-          {token ? (
-            <button
-              className="text-button modal-secondary"
-              onClick={disconnect}
-            >
-              Disconnect and use sample collection
-            </button>
-          ) : (
-            <button
-              className="text-button modal-secondary"
-              onClick={closeConnection}
-            >
-              Keep exploring the sample collection
-            </button>
-          )}
         </Modal>
       )}
       {selectedMovie && detailMovie && (
@@ -1410,7 +1247,7 @@ export default function Home() {
               </a>
               <p className="field-hint">
                 Watch options via TMDB and JustWatch.
-                {!token && " This is a sample movie record."}
+                {isDemo && " This is a sample movie record."}
               </p>
             </div>
           </div>

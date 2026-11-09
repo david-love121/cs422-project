@@ -885,7 +885,7 @@ export default function VetoSession({
                       </p>
                     )}
                     <p className="v-hint">
-                      Real film metadata from a local snapshot. Service, audio,
+                      Saved ideas and prepared film metadata. Service, audio,
                       and subtitle access must be checked by your group.
                     </p>
                   </>

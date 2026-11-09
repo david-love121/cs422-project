@@ -83,9 +83,9 @@ Results are derived from submitted ballots. For each candidate, the four counter
 
 The decision session stays on the current device under the session-storage key `veto-session-v1`. It includes the phase, limits, viewer display names, candidates, nomination/voter position, saved draft responses, submitted ballots, excluded IDs, and selected movie ID. Reloading a private voting/review phase restores the handoff cover before anyone resumes. Unsaved response selections are held only in component state and are discarded when the workflow is covered or unmounted. Individual ballots are not placed in long-lived local storage or sent to a server. Session storage is readable by code and by someone inspecting the browser, so it does not provide a security boundary between people sharing the device.
 
-The movie browsing shortlist uses the existing local-storage key `movie-night-shortlist-v1` so earlier saved titles remain available. The catalog credential uses the existing session-storage key `movie-night-tmdb-token` and is entered by the user through Connect TMDB. Keeping these keys avoids silently discarding existing browser data during the rebrand.
+The movie browsing shortlist uses the existing local-storage key `movie-night-shortlist-v1` so earlier saved titles remain available. The retired browser credential key `movie-night-tmdb-token` is cleared on startup. The application credential is configured only on the server as `TMDB_API_TOKEN`.
 
-In this `main` branch, catalog requests go directly from the browser to TMDB. There is no application server message API for votes. See the [catalog API guide](./tmdb-client-api.md) for request/response semantics, filter translation, errors, and credential handling. The separate `server-side` branch has a different server API and credential boundary.
+Catalog requests use the application’s same-origin `/api/catalog`, `/api/movies`, and `/api/movies/<id>` endpoints. See the [catalog API guide](./tmdb-api.md) for request/response semantics, filter translation, errors, and caching. There is no application server message API for votes: ballots and round state remain on the shared device. Live or prepared movies saved from Explore can be nominated in Decide together; runtime and playback access still require explicit confirmation.
 
 ## Demo walkthrough
 

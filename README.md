@@ -8,6 +8,8 @@ The Next.js app lives in [`prototype/`](./prototype/).
 
 - [Run the app and understand its limits](./prototype/README.md)
 - [Functional prototype specification, information model, and walkthrough](./prototype/docs/functional-prototype.md)
-- [Movie catalog API and request flow](./prototype/docs/tmdb-client-api.md)
+- [Movie catalog API and request flow](./prototype/docs/tmdb-api.md)
 
-The [`server-side` branch](https://github.com/david-love121/cs422-project/tree/server-side) contains the earlier server-backed movie discovery version, including its separate TMDB caching and deployment documentation.
+`main` is the single maintained version: Veto’s shared-device workflow plus server-backed movie discovery, server-only TMDB credentials, and shared caching. Both earlier branch histories are preserved in its merge commit.
+
+See the [consolidation audit](./prototype/docs/consolidation.md) for the previous worktrees, branch differences, and validation.

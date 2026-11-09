@@ -11,12 +11,14 @@ import {
   LockKeyhole,
   Plus,
   ShieldCheck,
+  Star,
   X,
 } from "lucide-react";
 import { DEMO_LANGUAGES, DEMO_MOVIES, DEMO_PROVIDERS } from "@/lib/demo";
 import { imageUrl, type Movie } from "@/lib/tmdb";
 import {
   assumeCandidate,
+  clearFavorite,
   eligibility,
   PROTOTYPE_RUNTIME_MINUTES,
   remainingMinutes,
@@ -163,6 +165,7 @@ export default function VetoSession({
   const windowMinutes = remainingMinutes(s.limits.deadline, now);
   const current = s.candidates[s.index];
   const results = tally(s.candidates, s.ballots);
+  const favoriteId = clearFavorite(results, s.limits.viewers);
   const savedIds = new Set(saved.map((movie) => movie.id));
   const eligible = s.candidates.every(
     (c) => eligibility(c, s.limits, now).length === 0,
@@ -1019,9 +1022,16 @@ export default function VetoSession({
                 {results.map(({ candidate: c, counts, eliminated }) => (
                   <article
                     data-demo-result={c.movie.id}
-                    className={`v-panel v-result ${eliminated ? "is-eliminated" : ""}`}
+                    className={`v-panel v-result ${eliminated ? "is-eliminated" : ""} ${c.movie.id === favoriteId ? "is-favorite" : ""}`}
                     key={c.movie.id}
                   >
+                    {c.movie.id === favoriteId && <>
+                      <span className="v-favorite-sticker" aria-hidden="true">
+                        <Star size={44} strokeWidth={6} className="v-favorite-sticker-edge" />
+                        <Star size={44} strokeWidth={1.4} className="v-favorite-sticker-star" />
+                      </span>
+                      <p className="v-favorite-label">Group favorite</p>
+                    </>}
                     <div className="v-result-title">
                       <h2>{c.movie.title}</h2>
                       <span

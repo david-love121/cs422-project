@@ -183,6 +183,8 @@ test("multiple survivors stay saveable after the original deadline and persist w
   await submitTurn(page, ["Okay", "Okay"]);
   await submitTurn(page, ["Okay", "Okay"]);
   await page.getByRole("button", { name: "Show group results" }).click();
+  await expect(page.getByText("Group favorite", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".v-favorite-sticker")).toHaveCount(0);
   await page.clock.setSystemTime(new Date("2026-11-06T20:00:00Z"));
   await page.reload();
   for (const title of [FIRST, SECOND]) {
@@ -199,6 +201,35 @@ test("multiple survivors stay saveable after the original deadline and persist w
   await page.getByRole("button", { name: "View shortlist", exact: true }).click();
   for (const title of [FIRST, SECOND])
     await expect(page.getByRole("button", { name: `Remove ${title} from shortlist`, exact: true })).toBeVisible();
+});
+
+test("a clear favorite receives a teal highlight and star while every survivor remains saveable", async ({ page }, testInfo) => {
+  await prepareRound(page);
+  await submitTurn(page, ["Really Want", "Okay"]);
+  await submitTurn(page, ["Really Want", "Okay"]);
+  await page.getByRole("button", { name: "Show group results" }).click();
+  const favorite = resultFor(page, FIRST);
+  const other = resultFor(page, SECOND);
+  await expect(favorite.getByText("Group favorite", { exact: true })).toBeVisible();
+  await expect(favorite.locator(".v-favorite-sticker")).toBeVisible();
+  await expect(page.locator(".v-favorite-sticker")).toHaveCount(1);
+  for (const title of [FIRST, SECOND])
+    await expect(resultFor(page, title).getByRole("button", { name: `Add ${title} to shortlist`, exact: true })).toBeEnabled();
+  for (const theme of ["light", "dark"]) {
+    if (theme === "dark") {
+      await page.getByRole("button", { name: "Veto settings", exact: true }).click();
+      await page.getByRole("menuitemcheckbox", { name: "Dark mode", exact: true }).click();
+      await page.keyboard.press("Escape");
+    }
+    const background = await favorite.evaluate((element) => getComputedStyle(element).backgroundColor);
+    expect(background).not.toBe(await other.evaluate((element) => getComputedStyle(element).backgroundColor));
+    await expectNoOverflow(page);
+    await favorite.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `/tmp/veto-${testInfo.project.name}-favorite-${theme}.png`, fullPage: true });
+  }
+  await favorite.getByRole("button", { name: `Add ${FIRST} to shortlist`, exact: true }).click();
+  await expect(favorite.getByText("Group favorite", { exact: true })).toBeVisible();
+  await expect(other.getByRole("button", { name: `Add ${SECOND} to shortlist`, exact: true })).toBeEnabled();
 });
 
 test("an older confirmed round reopens at results so other survivors can be saved", async ({ page }) => {

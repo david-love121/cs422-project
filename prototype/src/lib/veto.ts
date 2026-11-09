@@ -144,6 +144,14 @@ export function tally(candidates: Candidate[], ballots: Ballot[]) {
   });
 }
 
+/** Celebrate a sole majority favorite among survivors without selecting a movie. */
+export function clearFavorite(results: ReturnType<typeof tally>, viewers: number): number | null {
+  const enthusiastic = results.filter(({ eliminated, counts }) => !eliminated && counts.want > viewers / 2);
+  const mostWanted = Math.max(0, ...enthusiastic.map(({ counts }) => counts.want));
+  const leaders = enthusiastic.filter(({ counts }) => counts.want === mostWanted);
+  return leaders.length === 1 ? leaders[0].candidate.movie.id : null;
+}
+
 export function defaultLimits(now = Date.now()): Limits {
   return {
     viewers: 3,

@@ -63,6 +63,8 @@ test("the automated five-viewer demo reaches three survivors without overwriting
   await expect(page.getByRole("region", { name: "Voting transition", exact: true })).toHaveCount(0);
   await expect(page.locator(".v-results-note")).toContainText("5 completed ballots");
   await expect(page.locator(".v-result")).toHaveCount(5);
+  await expect(page.locator(".v-result.is-favorite")).toContainText("Glass Onion: A Knives Out Mystery");
+  await expect(page.locator(".v-favorite-sticker")).toHaveCount(1);
   const expectedTotals = [["2", "2", "1", "0"], ["3", "2", "0", "0"], ["1", "3", "1", "0"], ["0", "2", "2", "1"], ["0", "4", "0", "1"]];
   for (let index = 0; index < expectedTotals.length; index++)
     await expect(page.locator(".v-result").nth(index).locator(".v-counts strong")).toHaveText(expectedTotals[index]);

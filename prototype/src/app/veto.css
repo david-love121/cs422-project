@@ -594,6 +594,55 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 }
+.v-result {
+  position: relative;
+}
+.v-results .v-panel.v-result.is-favorite {
+  background: color-mix(in srgb, var(--accent) 12%, var(--white));
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+  box-shadow: 0 3px 16px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.v-favorite-label {
+  margin: 0 0 12px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.v-favorite-sticker {
+  position: absolute;
+  top: -18px;
+  right: -10px;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  transform: rotate(12deg);
+  filter: drop-shadow(1px 3px 2px #33220730);
+  pointer-events: none;
+  animation: v-sticker-appear .65s cubic-bezier(.2, .8, .2, 1) both;
+}
+.v-favorite-sticker svg {
+  grid-area: 1 / 1;
+  stroke-linejoin: round;
+}
+.v-favorite-sticker-edge {
+  color: #fff8e3;
+  fill: #fff8e3;
+}
+.v-favorite-sticker-star {
+  color: #a57519;
+  fill: #f5ce62;
+}
+@keyframes v-sticker-appear {
+  0% { opacity: 0; transform: rotate(-10deg) scale(.65); }
+  65% { opacity: 1; transform: rotate(15deg) scale(1.08); }
+  100% { opacity: 1; transform: rotate(12deg) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v-favorite-sticker { animation: none; }
+}
 .v-result-title {
   display: flex;
   gap: 15px;

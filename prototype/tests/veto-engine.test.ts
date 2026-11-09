@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { DEMO_MOVIES } from "../src/lib/demo";
 import {
   assumeCandidate,
+  clearFavorite,
   defaultLimits,
   eligibility,
   remainingMinutes,
@@ -10,6 +11,7 @@ import {
   PROTOTYPE_RUNTIME_MINUTES,
   type Ballot,
   type Candidate,
+  type Response,
 } from "../src/lib/veto";
 
 const now = Date.parse("2026-11-05T20:00:00Z");
@@ -92,4 +94,30 @@ test("a veto overrides enthusiasm while a softer preference leaves a title avail
   assert.deepEqual(results[1], { candidate: second, counts: { want: 1, okay: 1, prefer: 1, veto: 0 }, eliminated: false });
   for (const result of results) assert.equal(Object.values(result.counts).reduce((sum, count) => sum + count, 0), 3);
   assert.deepEqual(tally([first], [{}])[0].counts, { want: 0, okay: 0, prefer: 0, veto: 0 });
+});
+
+test("a clear favorite needs a unique lead and a majority of Really Want responses", () => {
+  const first = candidate();
+  const second = candidate({ movie: DEMO_MOVIES[0] });
+  const favorite = (votes: [Response, Response][]) => clearFavorite(tally([first, second], votes.map(([a, b]) => ({
+    [first.movie.id]: a, [second.movie.id]: b,
+  }))), 5);
+  assert.equal(favorite([["want", "want"], ["want", "want"], ["want", "okay"], ["okay", "okay"], ["okay", "prefer"]]), first.movie.id);
+  assert.equal(favorite([["want", "want"], ["want", "want"], ["want", "want"], ["okay", "okay"], ["okay", "prefer"]]), null);
+  assert.equal(favorite([["want", "want"], ["want", "okay"], ["okay", "okay"], ["okay", "okay"], ["okay", "prefer"]]), null);
+  assert.equal(clearFavorite(tally([first, second], []), 5), null);
+});
+
+test("a vetoed title cannot receive the favorite highlight even with the most enthusiasm", () => {
+  const first = candidate();
+  const second = candidate({ movie: DEMO_MOVIES[0] });
+  const ballots: Ballot[] = [
+    { [first.movie.id]: "want", [second.movie.id]: "want" },
+    { [first.movie.id]: "want", [second.movie.id]: "want" },
+    { [first.movie.id]: "want", [second.movie.id]: "want" },
+    { [first.movie.id]: "want", [second.movie.id]: "okay" },
+    { [first.movie.id]: "veto", [second.movie.id]: "okay" },
+  ];
+  assert.equal(clearFavorite(tally([first, second], ballots), 5), second.movie.id);
+  assert.equal(clearFavorite(tally([first], ballots), 5), null);
 });

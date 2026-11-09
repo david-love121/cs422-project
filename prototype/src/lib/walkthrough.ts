@@ -32,7 +32,7 @@ type Step = {
 };
 export type DemoCaption = Pick<Step, "chapter" | "title" | "detail">;
 export type DemoPoint = { x: number; y: number };
-export type DemoTransition = { completed: number; leaving?: boolean };
+export type DemoTransition = { completed: number; startedAt: number; leaving?: boolean };
 const target = (name: string) => `[data-demo="${name}"]`;
 
 /** A presentation script, executed through the same controls a person uses. */
@@ -51,8 +51,8 @@ export function walkthroughSteps(): Step[] {
   add("click", target("continue"), 1700);
   DEMO_FILMS.forEach((movie, index) => {
     caption = { chapter: 1, title: `${DEMO_PARTY[index]} brings a suggestion.`, detail: `${movie.title}. Each person gets the same chance to contribute.` };
-    add("type", target("search"), 1900, movie.title);
-    add("click", `[data-demo-movie="${movie.id}"]`, 2600);
+    add("type", target("search"), 1600, movie.title);
+    add("click", `[data-demo-movie="${movie.id}"]`, 2240);
   });
   caption = { chapter: 1, title: "Five suggestions. Equal say.", detail: "The same five movies go to every viewer, one private turn at a time." };
   add("click", target("start-voting"), 1500);
@@ -83,8 +83,8 @@ export function walkthroughSteps(): Step[] {
   });
   caption = { chapter: 2, title: "Leo reviews his responses.", detail: "The second turn ends the same way: review, submit, and cover the ballot." };
   add("look", ".v-review-row", 800);
-  caption = { chapter: 2, title: "Skipping the repeated votes.", detail: "Leo finishes his review. The last three viewers follow the same private steps as we move ahead to results." };
-  add("skip-votes", undefined, 4700);
+  caption = { chapter: 2, title: "The remaining private turns.", detail: "Leo submits his review. Voting speeds up behind the overlay as Priya, Sam, and Alex have their say." };
+  add("skip-votes", undefined, 8000);
 
   caption = { chapter: 3, title: "Five voices. A clear result.", detail: "All five ballots count. Now there’s time to compare what survived, and why." };
   add("click", target("show-results"), 2000);
@@ -189,33 +189,38 @@ export async function runWalkthrough({
       onCaption(step);
       deadline += (step.weight / weight) * WALKTHROUGH_DURATION;
       if (step.kind === "skip-votes") {
-        onTransition({ completed: 1 });
+        const startedAt = clock();
+        onTransition({ completed: 1, startedAt });
         document.querySelectorAll(".demo-target").forEach((item) => item.classList.remove("demo-target"));
-        await wait(reducedMotion ? 32 : 500);
-        const click = async (selector: string) => {
+        await wait(reducedMotion ? 32 : 650);
+        const click = async (selector: string, delay: number) => {
           const element = await find(selector);
           await wait(0);
           element.click();
-          await wait(32);
+          await wait(delay);
         };
-        await click(target("finish-turn"));
-        onTransition({ completed: 2 });
+        await click(target("finish-turn"), 100);
+        onTransition({ completed: 2, startedAt });
         await wait(350);
         for (let viewer = 2; viewer < DEMO_BALLOTS.length; viewer++) {
-          await click(target("begin-turn"));
+          // Keep the real ballot visible behind the veil, accelerating each turn.
+          const delay = 165 - (viewer - 2) * 40;
+          await click(target("begin-turn"), delay);
+          const ballot = await find(".v-vote-movie");
+          ballot.scrollIntoView({ behavior: "instant", block: "center" });
           for (const response of DEMO_BALLOTS[viewer]) {
-            await click(`[data-demo-response="${response}"]`);
-            await click(target("save-response"));
+            await click(`[data-demo-response="${response}"]`, delay);
+            await click(target("save-response"), delay);
           }
-          await click(target("finish-turn"));
-          onTransition({ completed: viewer + 1 });
+          await click(target("finish-turn"), delay);
+          onTransition({ completed: viewer + 1, startedAt });
           await wait(350);
         }
         const ready = await find(target("show-results"));
         ready.scrollIntoView({ behavior: "instant", block: "center" });
-        const fade = reducedMotion ? 32 : 500;
-        await wait(deadline - clock() - fade);
-        onTransition({ completed: DEMO_PARTY.length, leaving: true });
+        const fade = reducedMotion ? 32 : 650;
+        await wait(startedAt + step.weight - clock() - fade);
+        onTransition({ completed: DEMO_PARTY.length, startedAt, leaving: true });
         await wait(fade);
         onTransition(null);
       } else if (step.selector) {

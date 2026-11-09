@@ -280,65 +280,53 @@
   display: grid;
   place-items: center;
   padding: 70px 24px 210px;
-  background: var(--paper);
+  background: #10181580;
+  -webkit-backdrop-filter: grayscale(1) blur(7px);
+  backdrop-filter: grayscale(1) blur(7px);
   color: var(--ink);
-  animation: demo-skip-in .5s ease both;
+  animation: demo-skip-in .65s ease both;
 }
 .demo-skip.is-leaving {
   animation: none;
   opacity: 0;
-  transition: opacity .5s ease;
+  transition: opacity .65s ease;
 }
 .demo-skip-copy {
-  max-width: 600px;
+  width: min(420px, 100%);
+  padding: 32px 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--white);
+  box-shadow: 0 16px 64px #0003;
   text-align: center;
 }
-.demo-skip-copy .demo-eyebrow {
-  justify-content: center;
-}
 .demo-skip-copy h2 {
-  margin: 16px 0;
-  font-size: clamp(28px, 4vw, 42px);
+  margin: 0;
+  font-size: clamp(19px, 3vw, 23px);
   font-weight: 500;
-  letter-spacing: -.04em;
+  line-height: 1.6;
+  letter-spacing: -.025em;
 }
-.demo-skip-copy > p:not(.demo-eyebrow) {
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.8;
+.demo-skip-ending {
+  white-space: nowrap;
 }
-.demo-skip-viewers {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin: 28px 0 12px;
+.demo-skip-dots {
+  display: inline-flex;
+  text-align: left;
 }
-.demo-skip-viewers span {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  color: var(--muted);
-  background: var(--white);
-  transition: background .25s ease, color .25s ease;
+.demo-skip-dots span {
+  opacity: 0;
+  transition: opacity .5s ease;
 }
-.demo-skip-viewers .is-complete {
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-color: var(--accent);
-}
-.demo-skip-copy > .demo-skip-count {
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
+.demo-skip-dots [data-visible="true"] {
+  opacity: 1;
 }
 @keyframes demo-skip-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .demo-skip, .demo-skip.is-leaving, .demo-skip-viewers span {
+  .demo-skip, .demo-skip.is-leaving, .demo-skip-dots span {
     animation: none;
     transition: none;
   }

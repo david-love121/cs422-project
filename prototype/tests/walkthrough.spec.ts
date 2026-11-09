@@ -45,11 +45,21 @@ test("the automated five-viewer demo reaches three survivors without overwriting
   await menu.getByRole("menuitem", { name: "Start demo", exact: true }).click();
   const demo = page.getByRole("region", { name: "Guided demo", exact: true });
   await expect(demo).toBeVisible();
-  // The second review fades into a clearly labelled fast-forward for the last three viewers.
-  await page.clock.runFor(61_000);
-  await expect(page.getByRole("region", { name: "Voting transition", exact: true })).toBeVisible();
-  await expect(page.locator(".demo-skip")).toContainText("Skipping repeated votes");
-  await page.clock.runFor(8000);
+  // Leo's review fades into an eight-second veil while real voting accelerates behind it.
+  await page.clock.runFor(57_500);
+  const transition = page.getByRole("region", { name: "Voting transition", exact: true });
+  await expect(transition).toBeVisible();
+  await expect(transition.getByRole("heading", { name: "Simulated voting continues...", exact: true })).toBeVisible();
+  await expect(page.locator('.demo-skip-dots [data-visible="true"]')).toHaveCount(0);
+  const backdrop = await transition.evaluate((element) => getComputedStyle(element).backdropFilter);
+  expect(backdrop).toContain("grayscale(1)");
+  expect(backdrop).toContain("blur(7px)");
+  for (let dots = 1; dots <= 3; dots++) {
+    await page.clock.runFor(2000);
+    await expect(page.locator('.demo-skip-dots [data-visible="true"]')).toHaveCount(dots);
+    await expect(transition).toBeVisible();
+  }
+  await page.clock.runFor(5500);
   await expect(page.getByRole("region", { name: "Voting transition", exact: true })).toHaveCount(0);
   await expect(page.locator(".v-results-note")).toContainText("5 completed ballots");
   await expect(page.locator(".v-result")).toHaveCount(5);
@@ -80,15 +90,18 @@ test("pause, resume, replay, and exit control the walkthrough", async ({ page })
   await page.goto("/");
   const menu = await openMenu(page);
   await menu.getByRole("menuitem", { name: "Start demo", exact: true }).click();
-  await page.clock.runFor(61_000);
+  await page.clock.runFor(59_500);
   await expect(page.getByRole("region", { name: "Voting transition", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Pause demo", exact: true }).click();
-  const completed = await page.locator(".demo-skip-count").textContent();
+  const transition = page.locator(".demo-skip");
+  const completed = await transition.getAttribute("data-completed");
+  const dots = await page.locator('.demo-skip-dots [data-visible="true"]').count();
   const progress = page.getByRole("progressbar", { name: "Demo progress", exact: true });
   const pausedAt = await progress.getAttribute("aria-valuenow");
   await page.clock.runFor(10_000);
   await expect(progress).toHaveAttribute("aria-valuenow", pausedAt!);
-  await expect(page.locator(".demo-skip-count")).toHaveText(completed!);
+  await expect(transition).toHaveAttribute("data-completed", completed!);
+  await expect(page.locator('.demo-skip-dots [data-visible="true"]')).toHaveCount(dots);
   await page.getByRole("button", { name: "Resume demo", exact: true }).click();
   await page.clock.runFor(2000);
   await expect.poll(async () => Number(await progress.getAttribute("aria-valuenow"))).toBeGreaterThan(Number(pausedAt));

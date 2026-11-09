@@ -1,7 +1,7 @@
 import { DEMO_MOVIES } from "./demo";
 import { RESPONSE_OPTIONS, type Response } from "./veto";
 
-export const WALKTHROUGH_DURATION = 160_000;
+export const WALKTHROUGH_DURATION = 135_000;
 export const DEMO_PARTY = ["Maya", "Leo", "Priya", "Sam", "Alex"];
 export const DEMO_FILMS = [
   "Maharaja", "Glass Onion: A Knives Out Mystery", "The Adam Project",

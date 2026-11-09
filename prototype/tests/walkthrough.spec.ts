@@ -45,21 +45,20 @@ test("the automated five-viewer demo reaches three survivors without overwriting
   await menu.getByRole("menuitem", { name: "Start demo", exact: true }).click();
   const demo = page.getByRole("region", { name: "Guided demo", exact: true });
   await expect(demo).toBeVisible();
-  // One full turn is followed by a clearly labelled fast-forward for four ballots.
-  await page.clock.runFor(59_000);
+  // The second review fades into a clearly labelled fast-forward for the last three viewers.
+  await page.clock.runFor(61_000);
   await expect(page.getByRole("region", { name: "Voting transition", exact: true })).toBeVisible();
   await expect(page.locator(".demo-skip")).toContainText("Skipping repeated votes");
   await page.clock.runFor(8000);
   await expect(page.getByRole("region", { name: "Voting transition", exact: true })).toHaveCount(0);
   await expect(page.locator(".v-results-note")).toContainText("5 completed ballots");
   await expect(page.locator(".v-result")).toHaveCount(5);
-  for (const row of await page.locator(".v-result").all()) {
-    const counts = await row.locator(".v-counts strong").allTextContents();
-    expect(counts.reduce((total, count) => total + Number(count), 0)).toBe(5);
-  }
+  const expectedTotals = [["2", "2", "1", "0"], ["3", "2", "0", "0"], ["1", "3", "1", "0"], ["0", "2", "2", "1"], ["0", "4", "0", "1"]];
+  for (let index = 0; index < expectedTotals.length; index++)
+    await expect(page.locator(".v-result").nth(index).locator(".v-counts strong")).toHaveText(expectedTotals[index]);
   await expect(page.getByText("English subtitles assumed", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Prototype access assumptions", { exact: true })).toHaveCount(0);
-  await page.clock.runFor(WALKTHROUGH_DURATION - 67_000 + 20_000);
+  await page.clock.runFor(WALKTHROUGH_DURATION - 69_000 + 20_000);
   await expect(demo).toHaveAttribute("data-demo-status", "complete");
   await expect(page.locator(".movie-grid .movie-card")).toHaveCount(3);
   await expect(page.locator(".movie-grid")).toContainText("Glass Onion");
@@ -81,7 +80,7 @@ test("pause, resume, replay, and exit control the walkthrough", async ({ page })
   await page.goto("/");
   const menu = await openMenu(page);
   await menu.getByRole("menuitem", { name: "Start demo", exact: true }).click();
-  await page.clock.runFor(59_000);
+  await page.clock.runFor(61_000);
   await expect(page.getByRole("region", { name: "Voting transition", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Pause demo", exact: true }).click();
   const completed = await page.locator(".demo-skip-count").textContent();
@@ -91,8 +90,8 @@ test("pause, resume, replay, and exit control the walkthrough", async ({ page })
   await expect(progress).toHaveAttribute("aria-valuenow", pausedAt!);
   await expect(page.locator(".demo-skip-count")).toHaveText(completed!);
   await page.getByRole("button", { name: "Resume demo", exact: true }).click();
-  await page.clock.runFor(5000);
-  expect(Number(await progress.getAttribute("aria-valuenow"))).toBeGreaterThan(Number(pausedAt));
+  await page.clock.runFor(2000);
+  await expect.poll(async () => Number(await progress.getAttribute("aria-valuenow"))).toBeGreaterThan(Number(pausedAt));
   await page.getByRole("button", { name: "Restart demo", exact: true }).click();
   await expect(progress).toHaveAttribute("aria-valuenow", "0");
   await page.keyboard.press("Escape");

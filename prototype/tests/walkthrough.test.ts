@@ -22,11 +22,14 @@ test("the five-viewer walkthrough respects eligibility and veto rules and ends w
 });
 
 
-test("the 2:15 presentation shows one complete turn and devotes 70 seconds to results and the shortlist", () => {
+test("the 2:15 presentation shows two voting turns and devotes 70 seconds to results and the shortlist", () => {
   const steps = walkthroughSteps();
   const weights = [0, 1, 2, 3, 4].map((chapter) => steps.filter((step) => step.chapter === chapter).reduce((total, step) => total + step.weight, 0));
-  assert.deepEqual(weights, [14_000, 26_000, 25_000, 40_000, 30_000]);
+  assert.deepEqual(weights, [12_000, 24_000, 29_000, 40_000, 30_000]);
   assert.equal(weights.reduce((total, value) => total + value, 0), WALKTHROUGH_DURATION);
   assert.equal(steps.filter((step) => step.kind === "skip-votes").length, 1);
-  assert.equal(steps.filter((step) => step.selector === '[data-demo="begin-turn"]').length, 1);
+  assert.equal(steps.filter((step) => step.selector === '[data-demo="begin-turn"]').length, 2);
+  const fade = steps.findIndex((step) => step.kind === "skip-votes");
+  assert.equal(steps[fade - 1].selector, ".v-review-row");
+  assert.equal(steps[fade - 1].title, "Leo reviews his responses.");
 });

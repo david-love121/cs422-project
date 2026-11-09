@@ -86,7 +86,7 @@ export default function DemoWalkthrough({ onExit, onReplay }: { onExit: () => vo
         <div className="demo-skip-copy">
           <p className="demo-eyebrow">Skipping repeated votes</p>
           <h2>Everyone gets their say.</h2>
-          <p>Leo, Priya, Sam, and Alex take the same private voting steps.<br />We’re moving ahead to the group’s results.</p>
+          <p>Leo finishes his review. Priya, Sam, and Alex take their private turns.<br />We’re moving ahead to the group’s results.</p>
           <div className="demo-skip-viewers" aria-hidden="true">
             {DEMO_PARTY.map((name, index) => <span key={name} className={index < transition.completed ? "is-complete" : ""}>{index < transition.completed ? <Check size={18} /> : name[0]}</span>)}
           </div>
